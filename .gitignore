@@ -1,5 +1,6 @@
 .env
 .env.bak
+.env.backup
 nohup.out
 postgres_data
 postgres_data_keycloak

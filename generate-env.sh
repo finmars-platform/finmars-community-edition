@@ -8,8 +8,19 @@ if [ -f .env ]; then
   fi
 fi
 
-read -p "Enter MAIN_DOMAIN_NAME (e.g., ap-finmars.finmars.com): " MAIN_DOMAIN_NAME
-read -p "Enter AUTH_DOMAIN_NAME (e.g., ap-finmars-auth.finmars.com): " AUTH_DOMAIN_NAME
+read -p "Which version will you use? Developmant or production (d/P): " confirm
+if [[ ! "$confirm" =~ ^[Dd]$ ]]; then
+  PROTO="https"
+  COMPOSE_FILE="docker-compose.yml"
+else
+  PROTO="http"
+  COMPOSE_FILE="docker-compose.dev.yml"
+fi
+
+read -p "Enter MAIN_DOMAIN_NAME (e.g., ap-finmars.finmars.com) [default: localhost]: " MAIN_DOMAIN_NAME
+MAIN_DOMAIN_NAME=${MAIN_DOMAIN_NAME:-localhost}
+read -p "Enter AUTH_DOMAIN_NAME (e.g., ap-finmars-auth.finmars.com) [default: localhost:8004]: " AUTH_DOMAIN_NAME
+AUTH_DOMAIN_NAME=${AUTH_DOMAIN_NAME:-localhost:8004}
 read -p "Enter ADMIN_USERNAME: " ADMIN_USERNAME
 read -sp "Enter ADMIN_PASSWORD: " ADMIN_PASSWORD
 echo
@@ -31,19 +42,20 @@ sed \
   -e "s|^KC_DB_PASSWORD=.*|KC_DB_PASSWORD=${KC_DB_PASSWORD}|" \
   -e "s|^DOMAIN_NAME=.*|DOMAIN_NAME=${MAIN_DOMAIN_NAME}|" \
   -e "s|^CSRF_COOKIE_DOMAIN=.*|CSRF_COOKIE_DOMAIN=${MAIN_DOMAIN_NAME}|" \
-  -e "s|^CSRF_TRUSTED_ORIGINS=.*|CSRF_TRUSTED_ORIGINS=https://${MAIN_DOMAIN_NAME}|" \
-  -e "s|^PROD_APP_HOST=.*|PROD_APP_HOST=https://${MAIN_DOMAIN_NAME}|" \
-  -e "s|^APP_HOST=.*|APP_HOST=https://${MAIN_DOMAIN_NAME}|" \
-  -e "s|^PROD_API_HOST=.*|PROD_API_HOST=https://${MAIN_DOMAIN_NAME}|" \
-  -e "s|^API_HOST=.*|API_HOST=https://${MAIN_DOMAIN_NAME}|" \
-  -e "s|^KEYCLOAK_SERVER_URL=.*|KEYCLOAK_SERVER_URL=https://${AUTH_DOMAIN_NAME}|" \
-  -e "s|^KEYCLOAK_URL=.*|KEYCLOAK_URL=https://${AUTH_DOMAIN_NAME}|" \
-  -e "s|^PROD_KEYCLOAK_URL=.*|PROD_KEYCLOAK_URL=https://${AUTH_DOMAIN_NAME}|" \
+  -e "s|^CSRF_TRUSTED_ORIGINS=.*|CSRF_TRUSTED_ORIGINS=${PROTO}://${MAIN_DOMAIN_NAME}|" \
+  -e "s|^PROD_APP_HOST=.*|PROD_APP_HOST=${PROTO}://${MAIN_DOMAIN_NAME}|" \
+  -e "s|^APP_HOST=.*|APP_HOST=${PROTO}://${MAIN_DOMAIN_NAME}|" \
+  -e "s|^PROD_API_HOST=.*|PROD_API_HOST=${PROTO}://${MAIN_DOMAIN_NAME}|" \
+  -e "s|^API_HOST=.*|API_HOST=${PROTO}://${MAIN_DOMAIN_NAME}|" \
+  -e "s|^KEYCLOAK_SERVER_URL=.*|KEYCLOAK_SERVER_URL=${PROTO}://${AUTH_DOMAIN_NAME}|" \
+  -e "s|^KEYCLOAK_URL=.*|KEYCLOAK_URL=${PROTO}://${AUTH_DOMAIN_NAME}|" \
+  -e "s|^PROD_KEYCLOAK_URL=.*|PROD_KEYCLOAK_URL=${PROTO}://${AUTH_DOMAIN_NAME}|" \
   -e "s|^ADMIN_USERNAME=.*|ADMIN_USERNAME=${ESCAPED_ADMIN_USERNAME}|" \
   -e "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=${ESCAPED_ADMIN_PASSWORD}|" \
   -e "s|^MAIN_DOMAIN_NAME=.*|MAIN_DOMAIN_NAME=${MAIN_DOMAIN_NAME}|" \
   -e "s|^AUTH_DOMAIN_NAME=.*|AUTH_DOMAIN_NAME=${AUTH_DOMAIN_NAME}|" \
   -e "s|^REDIRECT_PATH=.*|REDIRECT_PATH=\"/realm00000/space00000/a/#!/dashboard\"|" \
+  -e "s|^COMPOSE_FILE=.*|COMPOSE_FILE=${COMPOSE_FILE}|" \
   .env.sample > .env
 
 echo ".env file created successfully from .env.sample."

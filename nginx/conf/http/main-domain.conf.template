@@ -1,0 +1,278 @@
+server {
+	listen 80;
+	server_name _;
+
+	client_max_body_size 2024m;
+
+	proxy_buffers 16 16k;
+	proxy_buffer_size 16k;
+
+	proxy_connect_timeout 300;
+	proxy_send_timeout 300;
+	proxy_read_timeout 300;
+	send_timeout 300;
+
+	location /nginx/
+	{
+		alias /var/www/error/;
+		try_files $uri $uri/ =404;
+	}
+
+	error_page 404 /404.html;
+	location = /404.html
+	{
+		root /var/www/error;
+		internal;
+	}
+
+	error_page 500 /500.html;
+	location = /500.html
+	{
+		root /var/www/error;
+		internal;
+	}
+
+	error_page 502 /502.html;
+	location = /502.html
+	{
+		root /var/www/error;
+		internal;
+	}
+
+	error_page 504 /504.html;
+	location = /504.html
+	{
+		root /var/www/error;
+		internal;
+	}
+
+	location = /.well-known/assetlinks.json {
+            alias /var/www/static/google-association-service/assetlinks.json;
+    }
+
+    location = /.well-known/apple-app-site-association {
+        alias /var/www/static/apple-association-service/assetlinks.json;
+#         default_type application/pkcs7-mime;
+        default_type application/json;
+        add_header 'Cache-Control' 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
+    }
+
+	location /scripts/ {
+		proxy_pass http://finmars-start-page:8080/scripts/;
+		proxy_set_header Host $http_host;
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+	}
+
+	location ~* /realm([\w-]*)/space([\w-]*)/admin
+	{
+		proxy_set_header Host $host;
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Proto $scheme;
+		proxy_pass http://core:8080;
+	}
+
+
+	location ~* /realm([\w-]*)/space([\w-]*)/api
+	{
+		proxy_set_header Host $host;
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Proto $scheme;
+		proxy_pass http://core:8080;
+	}
+
+	location ~* /realm([\w-]*)/api
+	{
+		proxy_set_header Host $host;
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Proto $scheme;
+		proxy_pass http://core:8080;
+	}
+
+	location ~* /realm([\w-]*)/workflow
+	{
+		proxy_set_header Host $host;
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Proto $scheme;
+		proxy_pass http://workflow:8080;
+	}
+
+	location ~* /realm([\w-]*)/space([\w-]*)/workflow
+	{
+		proxy_set_header Host $host;
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Proto $scheme;
+		proxy_pass http://workflow:8080;
+	}
+
+# # 	location ~* /realm([\w-]*)/olap
+# # 	{
+# # 		proxy_set_header Host $host;
+# # 		proxy_set_header X-Real-IP $remote_addr;
+# # 		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+# # 		proxy_set_header X-Forwarded-Proto $scheme;
+# # 		set $app "olap-realm$1";
+# # 		proxy_pass http://$app.finmars.svc.cluster.local:8080;
+# # 	}
+
+# # 	location ~* /realm([\w-]*)/space([\w-]*)/olap
+# # 	{
+# # 		proxy_set_header Host $host;
+# # 		proxy_set_header X-Real-IP $remote_addr;
+# # 		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+# # 		proxy_set_header X-Forwarded-Proto $scheme;
+# # 		set $app "olap-realm$1";
+# # 		proxy_pass http://$app.finmars.svc.cluster.local:8080;
+# # 	}
+
+	location ~* /realm([\w-]*)/space([\w-]*)/a
+	{
+		rewrite ^/realm([\w-]*)/space([\w-]*)/a(.*) /$3 break;
+		proxy_pass http://portal:8080;
+
+		# kill cache
+		add_header Last-Modified $date_gmt;
+		add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
+		if_modified_since off;
+		expires off;
+		etag off;
+	}
+
+	location ~* ^/realm([\w-]+)/v/_nuxt/(.*)$
+	{
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header Host $http_host;
+		proxy_redirect off;
+
+		# Use the captured group $1 for the dynamic part of the domain
+		# Use the captured group $2 for the latter part of the path
+		proxy_pass http://vue-portal:8080/_nuxt/$2;
+
+		# kill cache
+		add_header Last-Modified $date_gmt;
+		add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
+		if_modified_since off;
+		expires off;
+		etag off;
+	}
+
+	location ~* ^/realm([\w-]+)/w/_nuxt/(.*)$
+	{
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header Host $http_host;
+		proxy_redirect off;
+
+		# Use the captured group $1 for the dynamic part of the domain
+		# Use the captured group $2 for the latter part of the path
+		proxy_pass http://workflow-portal:8080/_nuxt/$2;
+
+		# kill cache
+		add_header Last-Modified $date_gmt;
+		add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
+		if_modified_since off;
+		expires off;
+		etag off;
+	}
+
+	location ~* /realm([\w-]*)/space([\w-]*)/v
+	{
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header Host $http_host;
+		proxy_redirect off;
+
+		proxy_pass http://vue-portal:8080;
+
+		# # kill cache
+		add_header Last-Modified $date_gmt;
+		add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
+		if_modified_since off;
+		expires off;
+		etag off;
+	}
+
+    location ~* /realm([\w-]*)/space([\w-]*)/w
+    {
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Host $http_host;
+        proxy_redirect off;
+
+        proxy_pass http://workflow-portal:8080;
+
+        # kill cache
+        add_header Last-Modified $date_gmt;
+        add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
+        if_modified_since off;
+        expires off;
+        etag off;
+    }
+
+	location /services/pdf {
+		proxy_pass http://pdfgen:8080;
+	}
+
+	location /services/excel {
+		proxy_pass http://excelgen:80;
+	}
+
+	location / {
+		proxy_set_header Host $http_host;
+		proxy_set_header X-Forwarded-Host $http_host;
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_pass http://finmars-start-page:8080;
+	}
+
+	location /login
+	{
+		proxy_set_header Host $http_host;
+		proxy_set_header X-Forwarded-Host $http_host;
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Port $http_port;
+		proxy_pass http://finmars-start-page:8080;
+	}
+
+	location /logout
+	{
+		proxy_set_header Host $http_host;
+		proxy_set_header X-Forwarded-Host $http_host;
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Port $http_port;
+		proxy_pass http://finmars-start-page:8080;
+	}
+
+	location /signup
+	{
+		proxy_set_header Host $http_host;
+		proxy_set_header X-Forwarded-Host $http_host;
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Port $http_port;
+		proxy_pass http://finmars-start-page:8080;
+	}
+
+	location ~* /w/_nuxt/(.*)$
+    	{
+    		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    		proxy_set_header Host $http_host;
+    		proxy_redirect off;
+
+    		# Use the captured group $1 for the dynamic part of the domain
+    		# Use the captured group $2 for the latter part of the path
+    		proxy_pass http://workflow-portal:8080/_nuxt/$1;
+
+    		# kill cache
+    		add_header Last-Modified $date_gmt;
+    		add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
+    		if_modified_since off;
+    		expires off;
+    		etag off;
+    	}
+
+}

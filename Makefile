@@ -1,3 +1,7 @@
+-include .env
+
+export
+
 COMPOSE = docker compose
 COMPOSE_FILE ?= docker-compose.yml
 
