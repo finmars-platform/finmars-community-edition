@@ -63,8 +63,8 @@ services:
     ports:
       - "8004:8080"
 
-  core:
-    image: finmars/finmars-core:1.21.18-stable
+  core: &core-base
+    image: finmars/finmars-core:${CORE_IMAGE_VERSION}
     restart: always
     volumes:
       - ./storage:/var/app/finmars_data
@@ -79,27 +79,14 @@ services:
       - keycloak
 
   core-worker:
-    image: finmars/finmars-core:1.21.18-stable
-    restart: always
-    volumes:
-      - ./storage:/var/app/finmars_data
-    env_file:
-      - .env
+    <<: *core-base
     environment:
       - DB_NAME=core_realm00000
       - DJANGO_SETTINGS_MODULE=poms_app.settings
       - INSTANCE_TYPE=worker
-    depends_on:
-      - db
-      - rabbitmq
-      - redis
 
   core-migration:
-    image: finmars/finmars-core:1.21.18-stable
-    volumes:
-      - ./storage:/var/app/finmars_data
-    env_file:
-      - .env
+    <<: *core-base
     environment:
       - DB_NAME=core_realm00000
       - INSTANCE_TYPE=job
@@ -107,8 +94,8 @@ services:
       - db
       - redis
 
-  workflow:
-    image: finmars/finmars-workflow:1.21.3-stable
+  workflow: &workflow-base
+    image: finmars/finmars-workflow:${WORKFLOW_IMAGE_VERSION}
     restart: always
     volumes:
       - ./storage:/var/app/finmars_data
@@ -124,45 +111,23 @@ services:
       - keycloak
 
   workflow-worker:
-    image: finmars/finmars-workflow:1.21.3-stable
-    restart: always
-    volumes:
-      - ./storage:/var/app/finmars_data
-    env_file:
-      - .env
+    <<: *workflow-base
     environment:
       - DB_NAME=workflow_realm00000
       - INSTANCE_TYPE=worker
       - DJANGO_SETTINGS_MODULE=workflow_app.settings
       - DOMAIN_NAME=${MAIN_DOMAIN_NAME}
-    depends_on:
-      - db
-      - rabbitmq
-      - redis
-      - keycloak
 
   workflow-scheduler:
-    image: finmars/finmars-workflow:1.21.3-stable
-    restart: always
-    volumes:
-      - ./storage:/var/app/finmars_data
-    env_file:
-      - .env
+    <<: *workflow-base
     environment:
       - DB_NAME=workflow_realm00000
       - INSTANCE_TYPE=beat
       - DJANGO_SETTINGS_MODULE=workflow_app.settings
       - DOMAIN_NAME=${MAIN_DOMAIN_NAME}
-    depends_on:
-      - db
-      - redis
 
   workflow-migration:
-    image: finmars/finmars-workflow:1.21.3-stable
-    volumes:
-      - ./storage:/var/app/finmars_data
-    env_file:
-      - .env
+    <<: *workflow-base
     environment:
       - DB_NAME=workflow_realm00000
       - INSTANCE_TYPE=job
@@ -180,13 +145,13 @@ services:
     restart: always
 
   finmars-start-page:
-    image: finmars/finmars-start-page:1.21.0-stable
+    image: finmars/finmars-start-page:${START_PAGE_IMAGE_VERSION}
     restart: always
     env_file:
       - .env
 
   portal:
-    image: finmars/finmars-portal:1.21.12-stable
+    image: finmars/finmars-portal:${PORTAL_IMAGE_VERSION}
     restart: always
     env_file:
       - .env
@@ -194,7 +159,7 @@ services:
       - "8080:8080" 
 
   vue-portal:
-    image: finmars/finmars-vue-portal:1.21.0-stable
+    image: finmars/finmars-vue-portal:${VUE_PORTAL_IMAGE_VERSION}
     restart: always
     environment:
       - NUXT_APP_BUILD_ASSETS_DIR=/realm00000/v/_nuxt/
@@ -202,7 +167,7 @@ services:
       - .env
 
   workflow-portal:
-    image: finmars/finmars-workflow-portal:1.21.7-stable
+    image: finmars/finmars-workflow-portal:${WORKFLOW_PORTAL_IMAGE_VERSION}
     restart: always
     environment:
       - NUXT_APP_BUILD_ASSETS_DIR=/realm00000/w/_nuxt/

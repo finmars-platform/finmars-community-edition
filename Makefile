@@ -5,7 +5,7 @@ export
 COMPOSE = docker compose
 COMPOSE_FILE ?= docker-compose.yml
 
-.PHONY: generate-env init-keycloak init-cert migrate up down restart-nginx import-sql export-sql db logs
+.PHONY: generate-env init-keycloak init-cert update-versions migrate up down restart-nginx import-sql export-sql db logs
 
 
 generate-env:
@@ -16,6 +16,9 @@ init-keycloak:
 
 init-cert:
 	docker compose up certbot
+
+update-versions:
+	./update-versions.sh
 
 migrate:
 	./migrate.sh
