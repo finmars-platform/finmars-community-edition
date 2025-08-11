@@ -21,12 +21,14 @@ if [[ ! "$confirm" =~ ^[Dd]$ ]]; then
   read -p "Enter AUTH_DOMAIN_NAME (e.g., ap-finmars-auth.finmars.com): " AUTH_DOMAIN_NAME
   AUTH_DOMAIN_NAME=${AUTH_DOMAIN_NAME}
   INTERNAL_AUTH_DOMAIN=${AUTH_DOMAIN_NAME}
+  VERIFY_SSL=True
 else
   ENVIRONMENT_TYPE=development
   AUTH_DOMAIN_PORT=8004
   MAIN_DOMAIN_NAME=127.0.0.1
   AUTH_DOMAIN_NAME=127.0.0.1:8004
   INTERNAL_AUTH_DOMAIN=nginx:8004
+  VERIFY_SSL=False
 fi
 
 
@@ -66,6 +68,7 @@ sed \
   -e "s|^REDIRECT_PATH=.*|REDIRECT_PATH=\"/realm00000/space00000/a/#!/dashboard\"|" \
   -e "s|^ENVIRONMENT_TYPE=.*|ENVIRONMENT_TYPE=${ENVIRONMENT_TYPE}|" \
   -e "s|^AUTH_DOMAIN_PORT=.*|AUTH_DOMAIN_PORT=${AUTH_DOMAIN_PORT}|" \
+  -e "s|^VERIFY_SSL=.*|VERIFY_SSL=${VERIFY_SSL}|" \
   .env.sample > .env
 
 echo ".env file created successfully from .env.sample."

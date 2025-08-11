@@ -19,6 +19,7 @@ services:
       - finmars-start-page
       - pdfgen
       - excelgen
+      - keycloak
     ports:
       - "80:80"
       - "443:443"
@@ -203,6 +204,12 @@ services:
       - ./postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"    
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${DB_USER}", "-d", "${DB_NAME}"]
+      interval: 10s
+      retries: 5
+      start_period: 10s
+      timeout: 5s
 
   db_keycloak:
     image: postgres:13-alpine
