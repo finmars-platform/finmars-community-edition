@@ -34,6 +34,14 @@ On Linux or Mac Enviroment (preferable on your Linux Server VM):
 # Install Updates
 
 sudo apt update
+
+sudo apt install -y ca-certificates curl gnupg lsb-release ntp
+wget -qO- https://get.docker.com/ | sh
+sudo usermod -aG docker $USER
+newgrp docker
+
+sudo apt install make
+
 sudo apt install python3-pip -y
 pip install flask
 
@@ -59,9 +67,6 @@ make migrate
 
 # Run Finmars
 make up
-
-# Verify containers
-docker ps
 
 ```
 

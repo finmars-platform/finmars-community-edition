@@ -518,7 +518,7 @@
     "clientId" : "finmars",
     "name" : "Finmars",
     "description" : "",
-    "rootUrl" : "http://${MAIN_DOMAIN_NAME}",
+    "rootUrl" : "https://${MAIN_DOMAIN_NAME}",
     "adminUrl" : "https://${AUTH_DOMAIN_NAME}/admin",
     "baseUrl" : "/realm00000/space00000/a/#!/dashboard",
     "surrogateAuthRequired" : false,

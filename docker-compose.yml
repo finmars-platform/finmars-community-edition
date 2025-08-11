@@ -3,9 +3,9 @@ services:
     image: nginx
     restart: always
     volumes:
-      - ./nginx/conf/https/main-domain.conf.template:/etc/nginx/templates/main-domain.conf.template
-      - ./nginx/conf/https/auth-domain.conf.template:/etc/nginx/templates/auth-domain.conf.template
-      - ./nginx/conf/https/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/conf/main-domain.conf.template:/etc/nginx/templates/main-domain.conf.template
+      - ./nginx/conf/auth-domain.conf.template:/etc/nginx/templates/auth-domain.conf.template
+      - ./nginx/conf/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./nginx/www:/var/www:ro
       - ./nginx/ssl:/etc/letsencrypt
     env_file:
@@ -22,6 +22,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "8004:8004"
 
   certbot:
     image: certbot/certbot
@@ -45,7 +46,7 @@ services:
     restart: always
     command: start --import-realm
     volumes:
-      - ./keycloak/config/https/keycloak.conf:/opt/keycloak/conf/keycloak.conf:ro
+      - ./keycloak/config/keycloak.conf:/opt/keycloak/conf/keycloak.conf:ro
       - ./nginx/ssl:/etc/letsencrypt
       - ./keycloak/themes/finmars:/opt/keycloak/themes/finmars
       - ./keycloak/data/:/opt/keycloak/data/import
@@ -61,7 +62,7 @@ services:
     depends_on:
       - db_keycloak
     ports:
-      - "8004:8080"
+      - "8005:8080"
 
   core: &core-base
     image: finmars/finmars-core:${CORE_IMAGE_VERSION}
@@ -83,16 +84,17 @@ services:
     environment:
       - DB_NAME=core_realm00000
       - DJANGO_SETTINGS_MODULE=poms_app.settings
-      - INSTANCE_TYPE=worker
+    command: >
+      sh -c "celery --app poms_app worker --concurrency=1 --loglevel=INFO -n $CORE_WORKER_NAME -Q $CORE_QUEUES --max-tasks-per-child=1"
 
   core-migration:
     <<: *core-base
     environment:
       - DB_NAME=core_realm00000
-      - INSTANCE_TYPE=job
     depends_on:
       - db
       - redis
+    command: ["python", "/var/app/manage.py", "migrate_all_schemes"]
 
   workflow: &workflow-base
     image: finmars/finmars-workflow:${WORKFLOW_IMAGE_VERSION}
@@ -114,27 +116,40 @@ services:
     <<: *workflow-base
     environment:
       - DB_NAME=workflow_realm00000
-      - INSTANCE_TYPE=worker
       - DJANGO_SETTINGS_MODULE=workflow_app.settings
       - DOMAIN_NAME=${MAIN_DOMAIN_NAME}
+    command: >
+      sh -c "celery --app workflow_app worker --concurrency=1 --loglevel=INFO -n $WORKFLOW_WORKER_NAME -Q $WORKFLOW_QUEUES --max-tasks-per-child=1"
 
   workflow-scheduler:
     <<: *workflow-base
     environment:
       - DB_NAME=workflow_realm00000
-      - INSTANCE_TYPE=beat
       - DJANGO_SETTINGS_MODULE=workflow_app.settings
       - DOMAIN_NAME=${MAIN_DOMAIN_NAME}
+    command: >
+      sh -c "celery --app workflow_app beat --loglevel=INFO --scheduler workflow.schedulers:DatabaseScheduler --pidfile=/tmp/celerybeat.pid"
 
   workflow-migration:
     <<: *workflow-base
     environment:
       - DB_NAME=workflow_realm00000
-      - INSTANCE_TYPE=job
       - DOMAIN_NAME=${MAIN_DOMAIN_NAME}
     depends_on:
       - db
       - redis
+    command: ["python", "/var/app/manage.py", "migrate_all_schemes"]
+
+  workflow-flower:
+    <<: *workflow-base
+    environment:
+      - DB_NAME=workflow_realm00000
+      - DJANGO_SETTINGS_MODULE=workflow_app.settings
+      - DOMAIN_NAME=${MAIN_DOMAIN_NAME}
+    ports:
+      - "5555:5555"
+    command: >
+      sh -c "celery --app workflow_app flower --url_prefix=$REALM_CODE/workflow/flower --broker={CELERY_BROKER_URL}"
 
   pdfgen:
     image: finmars/finmars-pdfgen:latest
@@ -204,6 +219,8 @@ services:
   rabbitmq:
     image: rabbitmq
     restart: always
+    volumes:
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
     ports:
       - "5672:5672"
     stdin_open: true

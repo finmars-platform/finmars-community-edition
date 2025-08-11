@@ -1,6 +1,9 @@
 server {
-	listen 80;
-	server_name _;
+	listen 443 ssl;
+	server_name ${MAIN_DOMAIN_NAME};
+
+    ssl_certificate /etc/letsencrypt/live/${MAIN_DOMAIN_NAME}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${MAIN_DOMAIN_NAME}/privkey.pem;
 
 	client_max_body_size 2024m;
 
@@ -91,6 +94,16 @@ server {
 		proxy_set_header X-Forwarded-Proto $scheme;
 		proxy_pass http://core:8080;
 	}
+
+    location ~* /realm([\w-]*)/workflow/flower
+    {
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        set $app "workflow-flower-realm$1";
+        proxy_pass http://workflow-flower:5555;
+    }
 
 	location ~* /realm([\w-]*)/workflow
 	{
@@ -273,6 +286,6 @@ server {
     		if_modified_since off;
     		expires off;
     		etag off;
-    	}
+	}
 
 }

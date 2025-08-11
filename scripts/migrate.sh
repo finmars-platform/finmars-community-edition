@@ -7,7 +7,7 @@ set +o allexport
 
 echo "✅ Create storage folder"
 mkdir -p ./storage 
-sudo chown -R 1000:1000 ./storage
+sudo chmod 777 ./storage
 
 echo "🚀 Starting Redis container..."
 docker compose up -d redis
