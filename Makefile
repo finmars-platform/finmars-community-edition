@@ -9,22 +9,22 @@ COMPOSE_FILE ?= docker-compose.yml
 
 
 generate-env:
-	./generate-env.sh
+	./scripts/generate-env.sh
 
 init-keycloak:
-	./init-keycloak.sh
+	./scripts/init-keycloak.sh
 
 init-cert:
-	docker compose up certbot
+	./scripts/init-cert.sh
 
 update-versions:
-	./update-versions.sh
+	./scripts/update-versions.sh
 
 migrate:
-	./migrate.sh
+	./scripts/migrate.sh
 
 up:
-	$(COMPOSE) -f $(COMPOSE_FILE) up --build -d \
+	$(COMPOSE) -f $(COMPOSE_FILE) up --build \
 	--remove-orphans \
 	--scale core-migration=0 \
 	--scale workflow-migration=0 \
@@ -37,10 +37,10 @@ restart-nginx:
 	docker exec -i finmars-community-edition-nginx-1 nginx -s reload
 
 import-sql: 
-	./import-sql.sh
+	./scripts/import-sql.sh
 
 export-sql:
-	./export-sql.sh
+	./scripts/export-sql.sh
 
 db:
 	docker compose up -d db

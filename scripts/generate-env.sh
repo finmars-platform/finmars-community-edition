@@ -8,19 +8,30 @@ if [ -f .env ]; then
   fi
 fi
 
+PROTO="https"
+COMPOSE_FILE="docker-compose.yml"
+
 read -p "Which version will you use? Developmant or production (d/P): " confirm
 if [[ ! "$confirm" =~ ^[Dd]$ ]]; then
-  PROTO="https"
-  COMPOSE_FILE="docker-compose.yml"
+  ENVIRONMENT_TYPE=production
+  AUTH_DOMAIN_PORT=443
+
+  read -p "Enter MAIN_DOMAIN_NAME (e.g., ap-finmars.finmars.com): " MAIN_DOMAIN_NAME
+  MAIN_DOMAIN_NAME=${MAIN_DOMAIN_NAME}
+  read -p "Enter AUTH_DOMAIN_NAME (e.g., ap-finmars-auth.finmars.com): " AUTH_DOMAIN_NAME
+  AUTH_DOMAIN_NAME=${AUTH_DOMAIN_NAME}
+  INTERNAL_AUTH_DOMAIN=${AUTH_DOMAIN_NAME}
+  VERIFY_SSL=True
 else
-  PROTO="http"
-  COMPOSE_FILE="docker-compose.dev.yml"
+  ENVIRONMENT_TYPE=development
+  AUTH_DOMAIN_PORT=8004
+  MAIN_DOMAIN_NAME=127.0.0.1
+  AUTH_DOMAIN_NAME=127.0.0.1:8004
+  INTERNAL_AUTH_DOMAIN=nginx:8004
+  VERIFY_SSL=False
 fi
 
-read -p "Enter MAIN_DOMAIN_NAME (e.g., ap-finmars.finmars.com) [default: localhost]: " MAIN_DOMAIN_NAME
-MAIN_DOMAIN_NAME=${MAIN_DOMAIN_NAME:-localhost}
-read -p "Enter AUTH_DOMAIN_NAME (e.g., ap-finmars-auth.finmars.com) [default: localhost:8004]: " AUTH_DOMAIN_NAME
-AUTH_DOMAIN_NAME=${AUTH_DOMAIN_NAME:-localhost:8004}
+
 read -p "Enter ADMIN_USERNAME: " ADMIN_USERNAME
 read -sp "Enter ADMIN_PASSWORD: " ADMIN_PASSWORD
 echo
@@ -47,7 +58,7 @@ sed \
   -e "s|^APP_HOST=.*|APP_HOST=${PROTO}://${MAIN_DOMAIN_NAME}|" \
   -e "s|^PROD_API_HOST=.*|PROD_API_HOST=${PROTO}://${MAIN_DOMAIN_NAME}|" \
   -e "s|^API_HOST=.*|API_HOST=${PROTO}://${MAIN_DOMAIN_NAME}|" \
-  -e "s|^KEYCLOAK_SERVER_URL=.*|KEYCLOAK_SERVER_URL=${PROTO}://${AUTH_DOMAIN_NAME}|" \
+  -e "s|^KEYCLOAK_SERVER_URL=.*|KEYCLOAK_SERVER_URL=${PROTO}://${INTERNAL_AUTH_DOMAIN}|" \
   -e "s|^KEYCLOAK_URL=.*|KEYCLOAK_URL=${PROTO}://${AUTH_DOMAIN_NAME}|" \
   -e "s|^PROD_KEYCLOAK_URL=.*|PROD_KEYCLOAK_URL=${PROTO}://${AUTH_DOMAIN_NAME}|" \
   -e "s|^ADMIN_USERNAME=.*|ADMIN_USERNAME=${ESCAPED_ADMIN_USERNAME}|" \
@@ -55,7 +66,9 @@ sed \
   -e "s|^MAIN_DOMAIN_NAME=.*|MAIN_DOMAIN_NAME=${MAIN_DOMAIN_NAME}|" \
   -e "s|^AUTH_DOMAIN_NAME=.*|AUTH_DOMAIN_NAME=${AUTH_DOMAIN_NAME}|" \
   -e "s|^REDIRECT_PATH=.*|REDIRECT_PATH=\"/realm00000/space00000/a/#!/dashboard\"|" \
-  -e "s|^COMPOSE_FILE=.*|COMPOSE_FILE=${COMPOSE_FILE}|" \
+  -e "s|^ENVIRONMENT_TYPE=.*|ENVIRONMENT_TYPE=${ENVIRONMENT_TYPE}|" \
+  -e "s|^AUTH_DOMAIN_PORT=.*|AUTH_DOMAIN_PORT=${AUTH_DOMAIN_PORT}|" \
+  -e "s|^VERIFY_SSL=.*|VERIFY_SSL=${VERIFY_SSL}|" \
   .env.sample > .env
 
 echo ".env file created successfully from .env.sample."

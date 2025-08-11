@@ -58,7 +58,7 @@ while IFS= read -r line || [ -n "$line" ]; do
             if [ "$value" != "$latest_version" ]; then
                 echo "$var=$latest_version"
             else
-                echo "$line  # Already up to date"
+                echo "$line"
             fi
         else
             echo "$line"
