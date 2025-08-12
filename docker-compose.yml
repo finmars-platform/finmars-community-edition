@@ -1,4 +1,11 @@
 services:
+  storage-init:
+    image: alpine:3.20
+    command: sh -c "mkdir -p /host-storage && chown -R 1000:1000 /host-storage"
+    volumes:
+      - ./storage:/host-storage
+    restart: "no"
+
   nginx:
     image: nginx
     restart: always
@@ -61,7 +68,8 @@ services:
       - KEYCLOAK_ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - KEYCLOAK_IMPORT=/opt/keycloak/data/import
     depends_on:
-      - db_keycloak
+      db_keycloak:
+        condition: service_healthy
     ports:
       - "8005:8080"
 
@@ -75,10 +83,18 @@ services:
     environment:
       - DB_NAME=core_realm00000
     depends_on:
-      - db
-      - rabbitmq
-      - redis
-      - keycloak
+      core-migration:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      redis:
+        condition: service_started
+      keycloak:
+        condition: service_started
+      storage-init:
+        condition: service_completed_successfully
 
   core-worker:
     <<: *core-base
@@ -90,11 +106,16 @@ services:
 
   core-migration:
     <<: *core-base
+    restart: "no" 
     environment:
       - DB_NAME=core_realm00000
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      storage-init:
+        condition: service_completed_successfully
     command: ["python", "/var/app/manage.py", "migrate_all_schemes"]
 
   workflow: &workflow-base
@@ -108,10 +129,18 @@ services:
       - DB_NAME=workflow_realm00000
       - DOMAIN_NAME=${MAIN_DOMAIN_NAME}
     depends_on:
-      - db
-      - rabbitmq
-      - redis
-      - keycloak
+      workflow-migration:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      redis:
+        condition: service_started
+      keycloak:
+        condition: service_started
+      storage-init:
+        condition: service_completed_successfully
 
   workflow-worker:
     <<: *workflow-base
@@ -133,12 +162,17 @@ services:
 
   workflow-migration:
     <<: *workflow-base
+    restart: "no" 
     environment:
       - DB_NAME=workflow_realm00000
       - DOMAIN_NAME=${MAIN_DOMAIN_NAME}
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      storage-init:
+        condition: service_completed_successfully
     command: ["python", "/var/app/manage.py", "migrate_all_schemes"]
 
   workflow-flower:
@@ -198,10 +232,12 @@ services:
     environment:
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME} 
     stdin_open: true
     tty: true
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d
     ports:
       - "5432:5432"    
     healthcheck:
@@ -222,6 +258,12 @@ services:
     tty: true
     volumes:
       - ./postgres_data_keycloak:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${KC_DB_USERNAME}", "-d", "${KC_DB_URL_DATABASE}"]
+      interval: 10s
+      retries: 5
+      start_period: 10s
+      timeout: 5s
 
   rabbitmq:
     image: rabbitmq

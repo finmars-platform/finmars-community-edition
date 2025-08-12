@@ -62,9 +62,6 @@ make init-cert
 # Init Keycloak
 make init-keycloak
 
-# Run Migrations
-make migrate
-
 # Run Finmars
 make up
 
