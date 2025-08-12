@@ -20,14 +20,9 @@ init-cert:
 update-versions:
 	./scripts/update-versions.sh
 
-migrate:
-	./scripts/migrate.sh
-
 up:
 	$(COMPOSE) -f $(COMPOSE_FILE) up --build \
 	--remove-orphans \
-	--scale core-migration=0 \
-	--scale workflow-migration=0 \
 	--scale certbot=0
 
 down:
