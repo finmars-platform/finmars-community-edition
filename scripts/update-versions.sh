@@ -6,15 +6,6 @@ API_URL="https://license.finmars.com/api/v1/version/get-latest/?channel=stable"
 
 TMP_FILE=$(mktemp)
 
-echo "Fetching latest versions from API..."
-curl -s --location "$API_URL" -o "$TMP_FILE"
-
-if [ $? -ne 0 ]; then
-    echo "Error: Failed to fetch versions from API"
-    rm "$TMP_FILE"
-    exit 1
-fi
-
 declare -A APP_MAPPING=(
     ["CORE_IMAGE_VERSION"]="backend"
     ["WORKFLOW_IMAGE_VERSION"]="workflow"
@@ -23,6 +14,20 @@ declare -A APP_MAPPING=(
     ["VUE_PORTAL_IMAGE_VERSION"]="vue-portal"
     ["WORKFLOW_PORTAL_IMAGE_VERSION"]="workflow-portal"
 )
+
+for var in "${!APP_MAPPING[@]}"; do
+    if ! grep -q "^$var=" "$ENV_FILE"; then
+        echo "$var=" >> "$ENV_FILE"
+        echo "Added missing key: $var"
+    fi
+done
+
+echo "Fetching latest versions from API..."
+if ! curl -s --location "$API_URL" -o "$TMP_FILE"; then
+    echo "Error: Failed to fetch versions from API"
+    rm "$TMP_FILE"
+    exit 1
+fi
 
 cp "$ENV_FILE" "${ENV_FILE}.bak"
 echo "Created backup of .env file at ${ENV_FILE}.bak"
@@ -69,7 +74,6 @@ while IFS= read -r line || [ -n "$line" ]; do
 done < "$ENV_FILE" > "${ENV_FILE}.new"
 
 mv "${ENV_FILE}.new" "$ENV_FILE"
-
 rm "$TMP_FILE"
 
 echo "Version update complete!"
