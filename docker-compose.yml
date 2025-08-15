@@ -30,7 +30,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "8004:8004"
+      - "${AUTH_DOMAIN_PORT}:${AUTH_DOMAIN_PORT}"
 
   certbot:
     image: certbot/certbot
@@ -75,6 +75,7 @@ services:
 
   core: &core-base
     image: finmars/finmars-core:${CORE_IMAGE_VERSION}
+    platform: linux/amd64
     restart: always
     volumes:
       - ./storage:/var/app/finmars_data
@@ -120,6 +121,7 @@ services:
 
   workflow: &workflow-base
     image: finmars/finmars-workflow:${WORKFLOW_IMAGE_VERSION}
+    platform: linux/amd64
     restart: always
     volumes:
       - ./storage:/var/app/finmars_data
@@ -187,20 +189,24 @@ services:
       sh -c "celery --app workflow_app flower --url_prefix=$REALM_CODE/workflow/flower --broker={CELERY_BROKER_URL}"
 
   pdfgen:
+    platform: linux/amd64
     image: finmars/finmars-pdfgen:latest
     restart: always
 
   excelgen:
+    platform: linux/amd64
     image: finmars/finmars-excelgen:latest
     restart: always
 
   finmars-start-page:
-    image: finmars/finmars-start-page:${START_PAGE_IMAGE_VERSION}
+    platform: linux/amd64
+    image: finmars/finmars-start-page:latest
     restart: always
     env_file:
       - .env
 
   portal:
+    platform: linux/amd64
     image: finmars/finmars-portal:${PORTAL_IMAGE_VERSION}
     restart: always
     env_file:
@@ -209,6 +215,7 @@ services:
       - "8080:8080" 
 
   vue-portal:
+    platform: linux/amd64
     image: finmars/finmars-vue-portal:${VUE_PORTAL_IMAGE_VERSION}
     restart: always
     environment:
@@ -217,6 +224,7 @@ services:
       - .env
 
   workflow-portal:
+    platform: linux/amd64
     image: finmars/finmars-workflow-portal:${WORKFLOW_PORTAL_IMAGE_VERSION}
     restart: always
     environment:
