@@ -194,8 +194,6 @@ services:
     restart: always
     env_file:
       - .env
-    ports:
-      - "8080:8080" 
 
   vue-portal:
     platform: linux/amd64
@@ -229,8 +227,6 @@ services:
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d
-    ports:
-      - "5432:5432"    
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "${DB_USER}", "-d", "${DB_NAME}"]
       interval: 10s
@@ -261,16 +257,12 @@ services:
     restart: always
     volumes:
       - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
-    ports:
-      - "5672:5672"
     stdin_open: true
     tty: true
 
   redis:
     image: redis
     restart: always
-    ports:
-      - "6379:6379"
     stdin_open: true
     tty: true
 
