@@ -7,8 +7,9 @@ set +o allexport
 
 wait_for_keycloak() {
   echo "Waiting for Keycloak to be ready..."
-  while ! curl -s -f http://localhost:8005/admin >/dev/null; do
-    sleep 5
+  while [ "$(docker inspect --format='{{.State.Health.Status}}' $(docker compose ps -q keycloak))" != "healthy" ]; do
+    echo "Keycloak health status: $(docker inspect --format='{{.State.Health.Status}}' $(docker compose ps -q keycloak))"
+    sleep 10
   done
   echo "Keycloak is ready!"
 }

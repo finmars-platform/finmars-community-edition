@@ -1,6 +1,6 @@
 server {
     listen ${AUTH_DOMAIN_PORT} ssl;
-    server_name ${AUTH_DOMAIN_NAME};
+    server_name ${AUTH_DOMAIN_NAME} nginx;
 
     ssl_certificate /etc/letsencrypt/live/${MAIN_DOMAIN_NAME}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/${MAIN_DOMAIN_NAME}/privkey.pem;

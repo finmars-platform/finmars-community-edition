@@ -30,7 +30,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "8004:8004"
+      - "${AUTH_DOMAIN_PORT}:${AUTH_DOMAIN_PORT}"
 
   certbot:
     image: certbot/certbot
@@ -70,11 +70,16 @@ services:
     depends_on:
       db_keycloak:
         condition: service_healthy
-    ports:
-      - "8005:8080"
+    healthcheck:
+      test:  ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080;echo -e \"GET /health/ready HTTP/1.1\r\nhost: http://localhost\r\nConnection: close\r\n\r\n\" >&3;grep \"HTTP/1.1 200 OK\" <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   core: &core-base
     image: finmars/finmars-core:${CORE_IMAGE_VERSION}
+    platform: linux/amd64
     restart: always
     volumes:
       - ./storage:/var/app/finmars_data
@@ -82,6 +87,7 @@ services:
       - .env
     environment:
       - DB_NAME=core_realm00000
+      - DJANGO_SETTINGS_MODULE=poms_app.settings
     depends_on:
       core-migration:
         condition: service_completed_successfully
@@ -92,23 +98,18 @@ services:
       redis:
         condition: service_started
       keycloak:
-        condition: service_started
+        condition: service_healthy
       storage-init:
         condition: service_completed_successfully
 
   core-worker:
     <<: *core-base
-    environment:
-      - DB_NAME=core_realm00000
-      - DJANGO_SETTINGS_MODULE=poms_app.settings
     command: >
       sh -c "celery --app poms_app worker --concurrency=1 --loglevel=INFO -n $CORE_WORKER_NAME -Q $CORE_QUEUES --max-tasks-per-child=1"
 
   core-migration:
     <<: *core-base
     restart: "no" 
-    environment:
-      - DB_NAME=core_realm00000
     depends_on:
       db:
         condition: service_healthy
@@ -120,6 +121,7 @@ services:
 
   workflow: &workflow-base
     image: finmars/finmars-workflow:${WORKFLOW_IMAGE_VERSION}
+    platform: linux/amd64
     restart: always
     volumes:
       - ./storage:/var/app/finmars_data
@@ -127,7 +129,7 @@ services:
       - .env
     environment:
       - DB_NAME=workflow_realm00000
-      - DOMAIN_NAME=${MAIN_DOMAIN_NAME}
+      - DJANGO_SETTINGS_MODULE=workflow_app.settings
     depends_on:
       workflow-migration:
         condition: service_completed_successfully
@@ -138,34 +140,23 @@ services:
       redis:
         condition: service_started
       keycloak:
-        condition: service_started
+        condition: service_healthy
       storage-init:
         condition: service_completed_successfully
 
   workflow-worker:
     <<: *workflow-base
-    environment:
-      - DB_NAME=workflow_realm00000
-      - DJANGO_SETTINGS_MODULE=workflow_app.settings
-      - DOMAIN_NAME=${MAIN_DOMAIN_NAME}
     command: >
       sh -c "celery --app workflow_app worker --concurrency=1 --loglevel=INFO -n $WORKFLOW_WORKER_NAME -Q $WORKFLOW_QUEUES --max-tasks-per-child=1"
 
   workflow-scheduler:
     <<: *workflow-base
-    environment:
-      - DB_NAME=workflow_realm00000
-      - DJANGO_SETTINGS_MODULE=workflow_app.settings
-      - DOMAIN_NAME=${MAIN_DOMAIN_NAME}
     command: >
       sh -c "celery --app workflow_app beat --loglevel=INFO --scheduler workflow.schedulers:DatabaseScheduler --pidfile=/tmp/celerybeat.pid"
 
   workflow-migration:
     <<: *workflow-base
     restart: "no" 
-    environment:
-      - DB_NAME=workflow_realm00000
-      - DOMAIN_NAME=${MAIN_DOMAIN_NAME}
     depends_on:
       db:
         condition: service_healthy
@@ -177,38 +168,35 @@ services:
 
   workflow-flower:
     <<: *workflow-base
-    environment:
-      - DB_NAME=workflow_realm00000
-      - DJANGO_SETTINGS_MODULE=workflow_app.settings
-      - DOMAIN_NAME=${MAIN_DOMAIN_NAME}
-    ports:
-      - "5555:5555"
     command: >
       sh -c "celery --app workflow_app flower --url_prefix=$REALM_CODE/workflow/flower --broker={CELERY_BROKER_URL}"
 
   pdfgen:
+    platform: linux/amd64
     image: finmars/finmars-pdfgen:latest
     restart: always
 
   excelgen:
+    platform: linux/amd64
     image: finmars/finmars-excelgen:latest
     restart: always
 
   finmars-start-page:
-    image: finmars/finmars-start-page:${START_PAGE_IMAGE_VERSION}
+    platform: linux/amd64
+    image: finmars/finmars-start-page:latest
     restart: always
     env_file:
       - .env
 
   portal:
+    platform: linux/amd64
     image: finmars/finmars-portal:${PORTAL_IMAGE_VERSION}
     restart: always
     env_file:
       - .env
-    ports:
-      - "8080:8080" 
 
   vue-portal:
+    platform: linux/amd64
     image: finmars/finmars-vue-portal:${VUE_PORTAL_IMAGE_VERSION}
     restart: always
     environment:
@@ -217,6 +205,7 @@ services:
       - .env
 
   workflow-portal:
+    platform: linux/amd64
     image: finmars/finmars-workflow-portal:${WORKFLOW_PORTAL_IMAGE_VERSION}
     restart: always
     environment:
@@ -238,14 +227,12 @@ services:
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d
-    ports:
-      - "5432:5432"    
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "${DB_USER}", "-d", "${DB_NAME}"]
       interval: 10s
       retries: 5
-      start_period: 10s
-      timeout: 5s
+      start_period: 15s
+      timeout: 10s
 
   db_keycloak:
     image: postgres:13-alpine
@@ -262,24 +249,20 @@ services:
       test: ["CMD", "pg_isready", "-U", "${KC_DB_USERNAME}", "-d", "${KC_DB_URL_DATABASE}"]
       interval: 10s
       retries: 5
-      start_period: 10s
-      timeout: 5s
+      start_period: 15s
+      timeout: 10s
 
   rabbitmq:
     image: rabbitmq
     restart: always
     volumes:
       - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
-    ports:
-      - "5672:5672"
     stdin_open: true
     tty: true
 
   redis:
     image: redis
     restart: always
-    ports:
-      - "6379:6379"
     stdin_open: true
     tty: true
 
