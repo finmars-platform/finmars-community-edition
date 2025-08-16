@@ -9,7 +9,7 @@ wait_for_keycloak() {
   echo "Waiting for Keycloak to be ready..."
   while [ "$(docker inspect --format='{{.State.Health.Status}}' $(docker compose ps -q keycloak))" != "healthy" ]; do
     echo "Keycloak health status: $(docker inspect --format='{{.State.Health.Status}}' $(docker compose ps -q keycloak))"
-    sleep 5
+    sleep 10
   done
   echo "Keycloak is ready!"
 }

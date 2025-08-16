@@ -168,8 +168,6 @@ services:
 
   workflow-flower:
     <<: *workflow-base
-    ports:
-      - "5555:5555"
     command: >
       sh -c "celery --app workflow_app flower --url_prefix=$REALM_CODE/workflow/flower --broker={CELERY_BROKER_URL}"
 
@@ -238,7 +236,7 @@ services:
       interval: 10s
       retries: 5
       start_period: 15s
-      timeout: 5s
+      timeout: 10s
 
   db_keycloak:
     image: postgres:13-alpine
@@ -256,7 +254,7 @@ services:
       interval: 10s
       retries: 5
       start_period: 15s
-      timeout: 5s
+      timeout: 10s
 
   rabbitmq:
     image: rabbitmq
