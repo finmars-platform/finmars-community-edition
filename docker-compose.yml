@@ -225,7 +225,7 @@ services:
     stdin_open: true
     tty: true
     volumes:
-      - ./postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "${DB_USER}", "-d", "${DB_NAME}"]
@@ -244,7 +244,7 @@ services:
     stdin_open: true
     tty: true
     volumes:
-      - ./postgres_data_keycloak:/var/lib/postgresql/data
+      - postgres_data_keycloak:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "${KC_DB_USERNAME}", "-d", "${KC_DB_URL_DATABASE}"]
       interval: 10s

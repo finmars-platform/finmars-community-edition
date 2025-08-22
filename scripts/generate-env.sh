@@ -11,7 +11,7 @@ fi
 PROTO="https"
 COMPOSE_FILE="docker-compose.yml"
 
-read -p "Which version will you use? Developmant or production (d/P): " confirm
+read -p "Which version will you use? Development or production (d/P): " confirm
 if [[ ! "$confirm" =~ ^[Dd]$ ]]; then
   ENVIRONMENT_TYPE=production
   AUTH_DOMAIN_PORT=443
