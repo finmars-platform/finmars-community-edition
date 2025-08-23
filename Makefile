@@ -44,4 +44,4 @@ logs:
 	docker compose logs -f
 
 clean:
-	docker volume rm finmars-community-edition_storage finmars-community-edition_postgres_data_keycloak finmars-community-edition_postgres_data
+	docker volume rm $(docker volume ls -q)
