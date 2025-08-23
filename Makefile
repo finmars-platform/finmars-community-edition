@@ -5,7 +5,7 @@ export
 COMPOSE = docker compose
 COMPOSE_FILE ?= docker-compose.yml
 
-.PHONY: generate-env init-keycloak init-cert update-versions migrate up down restart-nginx import-sql export-sql db logs
+.PHONY: generate-env init-keycloak init-cert update-versions migrate up down restart-nginx import-sql export-sql db logs clean
 
 
 generate-env:
@@ -21,7 +21,7 @@ update-versions:
 	./scripts/update-versions.sh
 
 up:
-	$(COMPOSE) -f $(COMPOSE_FILE) up --build \
+	$(COMPOSE) -f $(COMPOSE_FILE) up --build -d \
 	--remove-orphans \
 	--scale certbot=0
 
@@ -42,3 +42,6 @@ db:
 
 logs:
 	docker compose logs -f
+
+clean:
+	docker volume rm finmars-community-edition_storage finmars-community-edition_postgres_data_keycloak finmars-community-edition_postgres_data

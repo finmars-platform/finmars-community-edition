@@ -13,7 +13,6 @@ def get_setup_steps():
         ('generate_env', ['make', 'generate-env'], 'Initial Settings'),
         ('init_cert', ['make', 'init-cert'], 'Request Certificates'),
         ('init_keycloak', ['make', 'init-keycloak'], 'Initializing Single-Sign-On'),
-        ('migrate', ['make', 'migrate'], 'Preparing Database'),
         ('docker_up', ['make', 'up'], 'Starting Services')
     ]
 
@@ -88,7 +87,9 @@ def run_pending_step():
                 append_log(title, '', str(e))
                 state[step] = 'failed'
             save_state(state)
-            if step == 'docker_up': disable_autostart()
+
+            if step == 'docker_up':
+                disable_autostart()
 
             # build a simple list of step names in order
             step_names = [name for name, _, _ in get_setup_steps()]
@@ -122,6 +123,7 @@ def setup():
         step = request.form.get('step')
         if step == 'generate_env' and state.get(step) == 'pending':
             inp = (
+                "P\n"
                 f"{request.form['DOMAIN']}\n"
                 f"{request.form['AUTH_DOMAIN']}\n"
                 f"{request.form['ADMIN_USERNAME']}\n"
@@ -150,6 +152,7 @@ def setup():
             state[step] = 'requested'
             save_state(state)
         return redirect(url_for('setup'))
+
     logs = subprocess.run(['docker', 'compose', 'logs'], capture_output=True, text=True).stdout
     for step, _, title in get_setup_steps():
         status = state.get(step)
