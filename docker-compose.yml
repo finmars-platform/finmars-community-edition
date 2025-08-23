@@ -1,11 +1,4 @@
 services:
-  storage-init:
-    image: alpine:3.20
-    command: sh -c "mkdir -p /host-storage && chown -R 1000:1000 /host-storage"
-    volumes:
-      - ./storage:/host-storage
-    restart: "no"
-
   nginx:
     image: nginx
     restart: always
@@ -82,7 +75,7 @@ services:
     platform: linux/amd64
     restart: always
     volumes:
-      - ./storage:/var/app/finmars_data
+      - storage:/var/app/finmars_data
     env_file:
       - .env
     environment:
@@ -99,8 +92,6 @@ services:
         condition: service_started
       keycloak:
         condition: service_healthy
-      storage-init:
-        condition: service_completed_successfully
 
   core-worker:
     <<: *core-base
@@ -115,8 +106,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-      storage-init:
-        condition: service_completed_successfully
     command: ["python", "/var/app/manage.py", "migrate_all_schemes"]
 
   workflow: &workflow-base
@@ -124,7 +113,7 @@ services:
     platform: linux/amd64
     restart: always
     volumes:
-      - ./storage:/var/app/finmars_data
+      - storage:/var/app/finmars_data
     env_file:
       - .env
     environment:
@@ -141,8 +130,6 @@ services:
         condition: service_started
       keycloak:
         condition: service_healthy
-      storage-init:
-        condition: service_completed_successfully
 
   workflow-worker:
     <<: *workflow-base
@@ -162,8 +149,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-      storage-init:
-        condition: service_completed_successfully
     command: ["python", "/var/app/manage.py", "migrate_all_schemes"]
 
   workflow-flower:
@@ -269,3 +254,4 @@ services:
 volumes:
   postgres_data:
   postgres_data_keycloak:
+  storage:
