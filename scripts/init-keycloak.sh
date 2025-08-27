@@ -7,11 +7,27 @@ set +o allexport
 
 wait_for_keycloak() {
   echo "Waiting for Keycloak to be ready..."
-  while [ "$(docker inspect --format='{{.State.Health.Status}}' $(docker compose ps -q keycloak))" != "healthy" ]; do
-    echo "Keycloak health status: $(docker inspect --format='{{.State.Health.Status}}' $(docker compose ps -q keycloak))"
+  local timeout=300
+  local elapsed=0
+  
+  while [ $elapsed -lt $timeout ]; do
+    local health_status=$(docker inspect --format='{{.State.Health.Status}}' $(docker compose ps -q keycloak) 2>/dev/null || echo "unknown")
+    
+    if [ "$health_status" = "healthy" ]; then
+      echo "Keycloak is ready!"
+      return 0
+    elif [ "$health_status" = "unhealthy" ]; then
+      echo "❌ Keycloak is unhealthy! Exiting with error."
+      exit 1
+    fi
+    
+    echo "Keycloak health status: $health_status (elapsed: ${elapsed}s)"
     sleep 10
+    elapsed=$((elapsed + 10))
   done
-  echo "Keycloak is ready!"
+  
+  echo "❌ Timeout waiting for Keycloak to become healthy. Exiting with error."
+  exit 1
 }
 
 echo "🚀 Starting Keycloak PostgreSQL container..."

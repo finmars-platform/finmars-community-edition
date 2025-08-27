@@ -44,4 +44,8 @@ logs:
 	docker compose logs -f
 
 clean:
-	docker volume rm $(docker volume ls -q)
+	@if [ "$$(docker volume ls -q)" ]; then \
+		docker volume rm $$(docker volume ls -q); \
+	else \
+		echo "No volumes to remove"; \
+	fi
