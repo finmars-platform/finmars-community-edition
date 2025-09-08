@@ -1,0 +1,11 @@
+[Unit]
+Description=Finmars Initial Setup
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/finmars
+ExecStart=/usr/bin/python3 /opt/finmars/community_edition/main.py
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
