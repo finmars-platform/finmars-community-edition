@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>✅ Setup Complete</h2>
+<p>You can now use the <a href="https://{{domain}}">Finmars Platform.</a></p>
+
+<div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+    <h4 style="margin-top: 0;">🔧 Management Tools</h4>
+    <p>Use these tools to manage your Finmars installation:</p>
+    <ul>
+        <li><a href="/versions">Version Management</a> - Update component versions and restart containers</li>
+    </ul>
+</div>
+{% endblock %}

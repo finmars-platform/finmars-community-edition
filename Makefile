@@ -43,6 +43,10 @@ db:
 logs:
 	docker compose logs -f
 
+linters:
+	ruff format; \
+	ruff check --fix; \
+
 clean:
 	@if [ "$$(docker volume ls -q)" ]; then \
 		docker volume rm $$(docker volume ls -q); \
