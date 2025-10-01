@@ -8,8 +8,10 @@ nginx/ssl
 storage
 .idea
 *.sql
-venv
 .venv
-__pycache__/
+venv
 init-setup-log.txt
 .init-setup-state.json
+__pycache__/
+*.pyc
+*.pyo

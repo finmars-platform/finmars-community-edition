@@ -154,7 +154,7 @@ services:
   workflow-flower:
     <<: *workflow-base
     command: >
-      sh -c "celery --app workflow_app flower --url_prefix=$REALM_CODE/workflow/flower --broker={CELERY_BROKER_URL}"
+      sh -c "celery --app workflow_app flower --url_prefix=$REALM_CODE/workflow/flower --broker={CELERY_BROKER_URL} --basic_auth=${ADMIN_USERNAME}:${ADMIN_PASSWORD}"
 
   pdfgen:
     platform: linux/amd64
@@ -238,12 +238,17 @@ services:
       timeout: 10s
 
   rabbitmq:
-    image: rabbitmq
+    image: rabbitmq:3.11.3-management
     restart: always
-    volumes:
-      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+    env_file:
+      - .env
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
     stdin_open: true
     tty: true
+    volumes:
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
 
   redis:
     image: redis
