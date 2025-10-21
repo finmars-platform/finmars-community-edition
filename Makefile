@@ -48,8 +48,9 @@ linters:
 	ruff check --fix; \
 
 clean:
-	@if [ "$$(docker volume ls -q)" ]; then \
-		docker volume rm $$(docker volume ls -q); \
+	@if [ "$$($(COMPOSE) -f $(COMPOSE_FILE) config --volumes)" ]; then \
+		$(COMPOSE) -f $(COMPOSE_FILE) down -v; \
+		echo "Removed volumes for current project"; \
 	else \
-		echo "No volumes to remove"; \
+		echo "No volumes to remove for current project"; \
 	fi

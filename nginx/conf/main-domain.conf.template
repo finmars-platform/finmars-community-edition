@@ -240,7 +240,7 @@ server {
 	}
 
 	location /services/excel {
-		proxy_pass http://excelgen:80;
+		proxy_pass http://excelgen:8080;
 	}
 
 	location / {
