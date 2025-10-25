@@ -5,7 +5,7 @@ export
 COMPOSE = docker compose
 COMPOSE_FILE ?= docker-compose.yml
 
-.PHONY: generate-env init-keycloak init-cert update-versions migrate up down restart-nginx import-sql export-sql db logs clean
+.PHONY: generate-env init-keycloak init-cert update-versions migrate up down restart-nginx import-sql export-sql db logs clean backup-storage restore-storage create-backup
 
 
 generate-env:
@@ -36,6 +36,9 @@ import-sql:
 
 export-sql:
 	./scripts/export-sql.sh
+
+backup-storage:
+	./scripts/backup-storage.sh
 
 db:
 	docker compose up -d db

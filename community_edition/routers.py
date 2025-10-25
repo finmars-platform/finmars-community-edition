@@ -14,6 +14,12 @@ from community_edition.services.versions import (
     restart_containers,
     VERSION_MAPPING,
 )
+from community_edition.services.backup import (
+    get_backup_list,
+    create_backup,
+    delete_backup,
+)
+
 
 app = Flask(__name__)
 
@@ -140,3 +146,39 @@ def versions():
 
         except Exception as e:
             return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
+
+
+@app.route("/backup", methods=["GET", "POST", "PUT", "DELETE"])
+def backup():
+    if request.method == "GET":
+        backups = get_backup_list()
+        return render_template("backup.html", backups=backups)
+
+    elif request.method == "POST":
+        description = request.form.get("description", "No description provided")
+        if not description:
+            return jsonify(
+                {"success": False, "message": "Description is required"}
+            ), 400
+
+        try:
+            create_backup(description)
+            return jsonify(
+                {"success": True, "message": "Backup created successfully"}
+            ), 200
+        except Exception as e:
+            return jsonify({"success": False, "message": str(e)}), 500
+
+    elif request.method == "DELETE":
+        data = request.get_json()
+        timestamp = data.get("timestamp")
+        if not timestamp:
+            return jsonify({"success": False, "message": "Timestamp required"}), 400
+
+        try:
+            delete_backup(timestamp)
+            return jsonify(
+                {"success": True, "message": "Backup deleted successfully"}
+            ), 200
+        except Exception as e:
+            return jsonify({"success": False, "message": str(e)}), 500

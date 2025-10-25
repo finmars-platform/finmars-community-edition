@@ -15,3 +15,5 @@ init-setup-log.txt
 __pycache__/
 *.pyc
 *.pyo
+dumps/*
+app.log

@@ -37,7 +37,7 @@ def get_latest_versions() -> dict[str, str]:
         return {}
 
 
-def get_current_versions():
+def get_current_versions() -> dict[str, dict[str, str]]:
     """Get current versions from .env file"""
     env = load_env()
     current_versions = {}
@@ -52,7 +52,7 @@ def get_current_versions():
     return current_versions
 
 
-def restart_containers():
+def restart_containers() -> tuple[bool, str]:
     """Restart containers using make down and make up"""
     try:
         project_root = os.path.dirname(
