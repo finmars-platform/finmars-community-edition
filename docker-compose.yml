@@ -72,6 +72,8 @@ services:
 
   core: &core-base
     image: finmars/finmars-core:${CORE_IMAGE_VERSION}
+    # build:
+    #   context: ../finmars-core
     platform: linux/amd64
     restart: always
     volumes:
@@ -79,7 +81,7 @@ services:
     env_file:
       - .env
     environment:
-      - DB_NAME=core_realm00000
+      - DB_NAME=backend_realm00000
       - DJANGO_SETTINGS_MODULE=poms_app.settings
     depends_on:
       core-migration:
@@ -98,6 +100,16 @@ services:
     command: >
       sh -c "celery --app poms_app worker --concurrency=1 --loglevel=INFO -n $CORE_WORKER_NAME -Q $CORE_QUEUES --max-tasks-per-child=1"
 
+  # core-system-worker:
+  #   <<: *core-base
+  #   command: >
+  #     sh -c "celery --app poms_app worker --concurrency=1 --loglevel=INFO -n $CORE_SYSTEM_WORKER_NAME -Q $CORE_SYSTEM_QUEUES --max-tasks-per-child=1"
+
+  # core-scheduler:
+  #   <<: *core-base
+  #   command: >
+  #     sh -c "celery --app poms_app beat --loglevel=INFO --scheduler poms.common.celery:PerSpaceDatabaseScheduler --pidfile=/tmp/celerybeat.pid"
+
   core-migration:
     <<: *core-base
     restart: "no" 
@@ -110,6 +122,8 @@ services:
 
   workflow: &workflow-base
     image: finmars/finmars-workflow:${WORKFLOW_IMAGE_VERSION}
+    # build:
+    #   context: ../finmars-workflow
     platform: linux/amd64
     restart: always
     volumes:
@@ -218,6 +232,8 @@ services:
       retries: 5
       start_period: 15s
       timeout: 10s
+    ports:
+      - "5432:5432"
 
   db_keycloak:
     image: postgres:13-alpine

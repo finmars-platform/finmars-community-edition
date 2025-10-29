@@ -1,11 +1,8 @@
 import logging
 import os
 import shutil
-from datetime import datetime, timezone
+from datetime import datetime
 import subprocess
-from community_edition.services.env import load_env
-
-env = load_env()
 
 PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 BACKUP_DIR = os.path.join(PROJECT_DIR, "dumps")
@@ -22,55 +19,32 @@ def get_backup_list() -> list[dict]:
         return []
 
     for folder in os.listdir(BACKUP_DIR):
-        backup_path = os.path.join(BACKUP_DIR, folder)
-        core_sql = os.path.join(backup_path, "core.sql")
-        workflow_sql = os.path.join(backup_path, "workflow.sql")
-        storage_tar = os.path.join(backup_path, "storage.tar.gz")
-        description_txt = os.path.join(backup_path, "description.txt")
-
-        if not all(
-            [
-                os.path.exists(core_sql),
-                os.path.exists(workflow_sql),
-                os.path.exists(storage_tar),
-            ]
-        ):
+        dump_zip_filepath = os.path.join(BACKUP_DIR, folder, "dump.zip")
+        if not os.path.exists(dump_zip_filepath):
             continue
 
-        if os.path.exists(description_txt):
-            with open(description_txt, "r", encoding="utf-8") as f:
-                description = f.read().strip()
-        else:
-            description = "No description provided"
+        folder_datetime = datetime.strptime(folder, "%Y%m%d%H%M%S")
 
         backups.append(
             {
-                "description": description,
-                "size": sum(
-                    os.path.getsize(os.path.join(backup_path, f))
-                    for f in os.listdir(backup_path)
-                ),
-                "created": datetime.fromtimestamp(
-                    os.stat(backup_path).st_ctime
-                ).strftime("%Y-%m-%d %H:%M:%S"),
-                "path": backup_path,
+                "date": folder_datetime.strftime("%Y-%m-%d"),
+                "size": os.path.getsize(dump_zip_filepath),
+                "created": folder_datetime.strftime("%Y-%m-%d %H:%M:%S"),
+                "path": dump_zip_filepath,
                 "timestamp": folder,
             }
         )
     return sorted(backups, key=lambda x: x["created"], reverse=True)
 
 
-def create_backup(description: str) -> None:
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
-    subprocess.run(
-        ["./scripts/export-sql.sh", timestamp], capture_output=True, text=True
-    )
-    subprocess.run(
-        ["./scripts/download-storage.sh", timestamp], capture_output=True, text=True
-    )
-    with open(f"{BACKUP_DIR}/{timestamp}/description.txt", "w", encoding="utf-8") as f:
-        f.write(description.strip())
-
+def create_backup() -> None:
+    """Create a backup by calling the create-dumps.sh script"""
+    result = subprocess.run(["make", "create-dumps"], capture_output=True, text=True)
+    
+    if result.returncode != 0:
+        raise RuntimeError(f"Backup creation failed: {result.stderr}")
+    
+    logger.info(f"Backup created successfully: {result.stdout}")
 
 def delete_backup(backup_filename) -> None:
     """Delete a backup directory"""
@@ -80,3 +54,32 @@ def delete_backup(backup_filename) -> None:
         raise ValueError("Backup not found")
 
     shutil.rmtree(backup_path)
+
+
+def restore_backup(timestamp: str) -> None:
+    """Restore a backup by copying it to tmp/backup.zip and running restore script"""
+    backup_path = os.path.join(BACKUP_DIR, timestamp)
+    dump_zip_path = os.path.join(backup_path, "dump.zip")
+    tmp_backup_path = os.path.join(PROJECT_DIR, "tmp", "backup.zip")
+    
+    if not os.path.exists(dump_zip_path):
+        raise ValueError(f"Backup dump.zip not found for timestamp: {timestamp}")
+    
+    tmp_dir = os.path.join(PROJECT_DIR, "tmp")
+    os.makedirs(tmp_dir, exist_ok=True)
+    shutil.copy2(dump_zip_path, tmp_backup_path)
+    
+    result = subprocess.run(
+        ["make", "restore-backup"], 
+        capture_output=True, 
+        text=True,
+        cwd=PROJECT_DIR
+    )
+
+    if result.returncode != 0:
+        if os.path.exists(tmp_backup_path):
+            os.remove(tmp_backup_path)
+        raise RuntimeError(f"Restore script failed: {result.stderr}")
+    
+    logger.info(f"Backup restored successfully: {result.stdout}")
+    

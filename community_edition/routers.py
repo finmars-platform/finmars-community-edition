@@ -1,7 +1,8 @@
-from flask import Flask, jsonify, request, render_template, redirect, url_for
+from flask import Flask, jsonify, request, render_template, redirect, url_for, send_file
 import subprocess
+import os
 
-from community_edition.services.env import load_env, update_versions_in_env
+from community_edition.services.env import load_env
 from community_edition.services.setup import (
     get_setup_steps,
     load_state,
@@ -11,15 +12,21 @@ from community_edition.services.setup import (
 from community_edition.services.versions import (
     get_current_versions,
     get_latest_versions,
-    restart_containers,
-    VERSION_MAPPING,
+    set_versions_in_env,
 )
 from community_edition.services.backup import (
     get_backup_list,
     create_backup,
     delete_backup,
+    restore_backup,
+)
+from community_edition.services.container import (
+    down_containers,
+    up_containers,
 )
 
+
+setup_steps = get_setup_steps()
 
 app = Flask(__name__)
 
@@ -30,6 +37,13 @@ def setup():
     if request.method == "POST":
         step = request.form.get("step")
         if step == "generate_env" and state.get(step) == "pending":
+            if 'backup_file' in request.files and (backup_file:=request.files['backup_file']).filename != '':
+                os.makedirs(os.path.join(os.getcwd(), "tmp"), exist_ok=True)
+                backup_path = os.path.join(os.getcwd(), "tmp", "backup.zip")
+                backup_file.save(backup_path)
+            else:
+                state["restore_backup"] = "skip"
+
             inp = (
                 "P\n"
                 f"{request.form['DOMAIN']}\n"
@@ -38,9 +52,9 @@ def setup():
                 f"{request.form['ADMIN_PASSWORD']}\n"
             )
             proc = subprocess.run(
-                get_setup_steps()[0][1], input=inp, text=True, capture_output=True
+                setup_steps[0][1], input=inp, text=True, capture_output=True
             )
-            append_log(get_setup_steps()[0][2], proc.stdout, proc.stderr)
+            append_log(setup_steps[0][2], proc.stdout, proc.stderr)
             state["generate_env"] = "done" if proc.returncode == 0 else "failed"
             save_state(state)
 
@@ -55,6 +69,7 @@ def setup():
                     save_state(state)
 
             return redirect(url_for("setup"))
+
         if step in state and state[step] == "pending":
             state[step] = "requested"
             save_state(state)
@@ -98,56 +113,16 @@ def versions():
 
     elif request.method == "PUT":
         try:
-            current_versions = get_current_versions()
-            latest_versions = get_latest_versions()
-            if not latest_versions:
-                return jsonify(
-                    {"success": False, "message": "Failed to fetch latest versions"}
-                ), 500
+            set_versions_in_env()
+            
+            down_containers()
+            up_containers()
 
-            updates_needed = False
-            for env_var, data in current_versions.items():
-                app_name = data["app_name"]
-                current_version = data["current_version"]
-                latest_version = latest_versions.get(app_name, "")
-                if current_version != latest_version and latest_version != "":
-                    updates_needed = True
-                    break
-
-            if not updates_needed:
-                return jsonify(
-                    {
-                        "success": False,
-                        "message": "No updates available. All components are already up to date.",
-                    }
-                ), 400
-
-            version_updates = {}
-            for env_var, app_name in VERSION_MAPPING.items():
-                if app_name in latest_versions:
-                    version_updates[env_var] = latest_versions[app_name]
-
-            success, message = update_versions_in_env(version_updates)
-            if not success:
-                return jsonify({"success": False, "message": message}), 500
-
-            restart_success, restart_message = restart_containers()
-            if not restart_success:
-                return jsonify(
-                    {
-                        "success": False,
-                        "message": f"Versions updated but failed to restart containers: {restart_message}",
-                    }
-                ), 500
-
-            return jsonify(
-                {"success": True, "message": f"{message}. {restart_message}"}
-            )
-
+            return jsonify({"success": True, "message": "Versions updated successfully. Containers restarted with new versions."})
         except Exception as e:
-            return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
+            return jsonify({"success": False, "message": str(e)}), 500
 
-
+ 
 @app.route("/backup", methods=["GET", "POST", "PUT", "DELETE"])
 def backup():
     if request.method == "GET":
@@ -155,14 +130,8 @@ def backup():
         return render_template("backup.html", backups=backups)
 
     elif request.method == "POST":
-        description = request.form.get("description", "No description provided")
-        if not description:
-            return jsonify(
-                {"success": False, "message": "Description is required"}
-            ), 400
-
         try:
-            create_backup(description)
+            create_backup()
             return jsonify(
                 {"success": True, "message": "Backup created successfully"}
             ), 200
@@ -182,3 +151,53 @@ def backup():
             ), 200
         except Exception as e:
             return jsonify({"success": False, "message": str(e)}), 500
+
+
+@app.route("/backup/<timestamp>/download")
+def download_backup(timestamp):
+    """Download a backup dump.zip file"""
+    try:
+        from community_edition.services.backup import BACKUP_DIR
+        import os
+        
+        dump_file_path = os.path.join(BACKUP_DIR, timestamp, "dump.zip")
+        
+        if not os.path.exists(dump_file_path):
+            return jsonify({"success": False, "message": "Backup file not found"}), 404
+        
+        return send_file(
+            dump_file_path,
+            as_attachment=True,
+            download_name=f"backup_{timestamp}.zip",
+            mimetype="application/zip"
+        )
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@app.route("/backup/<timestamp>/restore", methods=["POST"])
+def restore_backup_route(timestamp):
+    """Restore a backup by stopping containers, running restore, and starting containers"""
+    try:
+        down_containers()
+        
+        create_backup()
+        restore_backup(timestamp)
+        
+        up_containers()
+        
+        return jsonify({
+            "success": True, 
+            "message": f"Backup {timestamp} restored successfully. Containers stopped, backup restored, and containers restarted."
+        }), 200
+        
+    except Exception as e:
+        try:
+            up_containers()
+        except Exception as up_error:
+            return jsonify({
+                "success": False, 
+                "message": f"Restore failed: {str(e)}. Additionally, failed to restart containers: {str(up_error)}"
+            }), 500
+        
+        return jsonify({"success": False, "message": str(e)}), 500

@@ -12,10 +12,6 @@
 <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #28a745;">
     <h3 style="margin-top: 0; color: #28a745;">💾 Create New Backup</h3>
     <form id="createBackupForm" style="display: flex; gap: 10px; align-items: end;">
-        <div style="flex: 1;">
-            <label for="description" style="display: block; margin-bottom: 5px; font-weight: 500;">Description:</label>
-            <input type="text" id="description" name="description" placeholder="e.g., Before major update" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-        </div>
         <button type="submit" class="btn" style="background-color: #28a745; margin: 0; white-space: nowrap;">📦 Create Backup</button>
     </form>
 </div>
@@ -30,9 +26,11 @@
             {% for backup in backups %}
             <div class="backup-card" style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin: 10px 0; background: #fafafa;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <h4 style="margin: 0; color: #333;">{{ backup.description }}</h4>
+                    <h4 style="margin: 0; color: #333;">{{ backup.date }}</h4>
                     <div style="display: flex; gap: 10px;">
-                        <button onclick="deleteBackup('{{ backup.description }}', '{{ backup.timestamp }}')" class="btn" style="background-color: #dc3545; padding: 6px 12px; font-size: 0.9rem;">🗑️ Delete</button>
+                        <button onclick="downloadBackup('{{ backup.timestamp }}')" class="btn" style="background-color: #007BFF; padding: 6px 12px; font-size: 0.9rem;">📥 Download</button>
+                        <button onclick="restoreBackup('{{ backup.date }}', '{{ backup.timestamp }}')" class="btn" style="background-color: #ffc107; color: #212529; padding: 6px 12px; font-size: 0.9rem;">🔄 Restore</button>
+                        <button onclick="deleteBackup('{{ backup.date }}', '{{ backup.timestamp }}')" class="btn" style="background-color: #dc3545; padding: 6px 12px; font-size: 0.9rem;">🗑️ Delete</button>
                     </div>
                 </div>
                 
@@ -45,10 +43,7 @@
                         <strong>Size:</strong><br>
                         {{ "%.1f"|format(backup.size / 1024 / 1024) }} MB
                     </div>
-                    <div>
-                        <strong>Status:</strong><br>
-                        <span style="color: #28a745;">✓ Available</span>
-                    </div>
+
                 </div>
             </div>
             {% endfor %}
@@ -67,8 +62,9 @@
         <li><strong>What's included:</strong> Configuration files (.env, docker-compose.yml), databases, Keycloak data, Nginx configs, and application data</li>
         <li><strong>What's NOT included:</strong> Docker images, logs, and temporary files</li>
         <li><strong>Storage:</strong> Backups are stored in the <code>/backups</code> directory</li>
-        <li><strong>Restore process:</strong> Containers will be stopped during restore and restarted automatically</li>
+        <li><strong>Restore process:</strong> Click the "Restore" button to restore a backup. Containers will be stopped during restore and restarted automatically</li>
         <li><strong>Safety:</strong> Always test backups in a non-production environment first</li>
+        <li><strong>Data Loss Warning:</strong> Restoring a backup will permanently replace all current data with the backup data</li>
     </ul>
 </div>
 
@@ -134,9 +130,6 @@
     document.getElementById('createBackupForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        const formData = new FormData(this);
-        const description = formData.get('description');
-        
         this.querySelector('button').disabled = true;
         document.body.classList.add('loading');
         showMessage('Creating backup... This may take several minutes.', 'info');
@@ -144,7 +137,10 @@
         try {
             const response = await fetch('/backup', {
                 method: 'POST',
-                body: formData
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({})
             });
             
             const result = await response.json();
@@ -166,8 +162,69 @@
     });
     
 
-    async function deleteBackup(description, timestamp) {
-        if (!confirm(`Are you sure you want to delete backup "${description}"? This action cannot be undone.`)) {
+    function downloadBackup(timestamp) {
+        // Create a temporary link element to trigger download
+        const link = document.createElement('a');
+        link.href = `/backup/${timestamp}/download`;
+        link.download = `backup_${timestamp}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showMessage('Download started...', 'info');
+    }
+
+    async function restoreBackup(date, timestamp) {
+        const warningMessage = `⚠️ WARNING: Restoring backup from "${date}" will:\n\n` +
+                              `• Stop all running containers\n` +
+                              `• Replace current database data with backup data\n` +
+                              `• Restart all containers\n\n` +
+                              `This action will PERMANENTLY LOSE all current data!\n\n` +
+                              `Are you absolutely sure you want to proceed?`;
+        
+        if (!confirm(warningMessage)) {
+            return;
+        }
+        
+        // Double confirmation for safety
+        if (!confirm(`FINAL WARNING: This will permanently replace all current data with backup from "${date}".\n\nType "RESTORE" in the next dialog to confirm.`)) {
+            return;
+        }
+        
+        const finalConfirmation = prompt(`Type "RESTORE" to confirm data replacement:`);
+        if (finalConfirmation !== "RESTORE") {
+            showMessage('Restore cancelled. You must type "RESTORE" to confirm.', 'warning');
+            return;
+        }
+        
+        showMessage('Starting restore process... This may take several minutes.', 'info');
+        
+        try {
+            const response = await fetch(`/backup/${timestamp}/restore`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showMessage(result.message, 'success');
+                // Refresh the page after a short delay
+                setTimeout(() => {
+                    window.location.reload();
+                }, 3000);
+            } else {
+                showMessage(result.message, 'error');
+            }
+        } catch (error) {
+            showMessage('Error restoring backup: ' + error.message, 'error');
+        }
+    }
+
+    async function deleteBackup(date, timestamp) {
+        if (!confirm(`Are you sure you want to delete backup from "${date}"? This action cannot be undone.`)) {
             return;
         }
         

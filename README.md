@@ -35,7 +35,7 @@ On Linux or Mac Enviroment (preferable on your Linux Server VM):
 
 sudo apt update
 
-sudo apt install -y ca-certificates curl gnupg lsb-release ntp
+sudo apt install -y ca-certificates curl gnupg lsb-release ntp unzip zip
 wget -qO- https://get.docker.com/ | sh
 sudo usermod -aG docker $USER
 newgrp docker

@@ -13,6 +13,8 @@ def get_setup_steps() -> list[tuple[str, list[str], str]]:
         ("generate_env", ["make", "generate-env"], "Initial Settings"),
         ("init_cert", ["make", "init-cert"], "Request Certificates"),
         ("init_keycloak", ["make", "init-keycloak"], "Initializing Single-Sign-On"),
+        ("update_versions", ["make", "update-versions"], "Updating Versions"),
+        ("restore_backup", ["make", "restore-backup"], "Restoring Backup"),
         ("docker_up", ["make", "up"], "Starting Services"),
     ]
 
@@ -26,7 +28,6 @@ def append_log(title: str, stdout: str, stderr: str) -> None:
             logf.write(stderr)
 
 
-# wrap to class
 def save_state(state: dict[str, str]) -> None:
     with open(STATE_FILE, "w") as f:
         json.dump(state, f, indent=2)
@@ -86,18 +87,20 @@ def run_pending_step() -> None:
             if step == "docker_up":
                 disable_autostart()
 
-            # build a simple list of step names in order
             step_names = [name for name, _, _ in get_setup_steps()]
 
-            # find where we just finished
             current_index = step_names.index(step)
-
-            # look to see if there is a next one
-            if current_index + 1 < len(step_names):
-                next_step = step_names[current_index + 1]
+            while current_index + 1 < len(step_names):
+                current_index += 1
+                
+                next_step = step_names[current_index]
                 if state.get(next_step) == "pending":
                     state[next_step] = "requested"
                     save_state(state)
+                    break
+                else:
+                    print(f"Skipping step {next_step} because it is not pending")           
+                    
 
             if os.path.exists(LOG_FILE):
                 with open(LOG_FILE) as logf:

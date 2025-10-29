@@ -17,3 +17,4 @@ __pycache__/
 *.pyo
 dumps/*
 app.log
+tmp/*
