@@ -8,7 +8,7 @@
 <p>
     You should already assigned Public IP address of that Server to Domain Names
 </p>
-<form method="POST" id="setup-form">
+<form method="POST" id="setup-form" enctype="multipart/form-data">
     <input type="hidden" name="step" value="generate_env">
 
     <label>Main Domain:<br>
@@ -28,6 +28,17 @@
     </label>
 
     <button type="submit" id="submit-btn" class="btn" disabled>Continue Setup</button>
+
+    <div style="margin: 20px 0; padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #17a2b8;">
+        <h3 style="margin-top: 0; color: #17a2b8;">🔄 Restore from Backup</h3>
+        <p style="margin: 10px 0; font-size: 0.9rem; color: #666;">Upload a backup file to restore your previous configuration instead of setting up from scratch.</p>
+        
+        <label>Backup File:<br>
+            <input name="backup_file" id="backup-file" type="file" accept=".zip,.tar.gz" style="margin-bottom: 10px;">
+        </label>
+        
+        <button type="button" id="restore-btn" class="btn" style="background-color: #17a2b8;" disabled>Restore from Backup</button>
+    </div>
 </form>
 
 <style>
@@ -46,6 +57,25 @@
         cursor: not-allowed;
         opacity: 0.6;
     }
+
+    input[type="file"] {
+        padding: 8px;
+        border: 2px dashed #17a2b8;
+        border-radius: 4px;
+        background-color: #f8f9fa;
+        cursor: pointer;
+        transition: border-color 0.3s ease;
+    }
+
+    input[type="file"]:hover {
+        border-color: #138496;
+    }
+
+    input[type="file"]:focus {
+        outline: none;
+        border-color: #138496;
+        box-shadow: 0 0 0 2px rgba(23, 162, 184, 0.25);
+    }
 </style>
 
 
@@ -55,18 +85,47 @@
         const authDomain = document.getElementById('auth-domain');
         const username = document.getElementById('username');
         const password = document.getElementById('password');
-        const button = document.getElementById('submit-btn');
+        const backupFile = document.getElementById('backup-file');
+        const submitButton = document.getElementById('submit-btn');
+        const restoreButton = document.getElementById('restore-btn');
 
         const pattern = /^[a-zA-Z0-9-]+\.[a-zA-Z0-9-]+\.[a-zA-Z]{2,}$/;
 
         const allFilled = domain.value && authDomain.value && username.value && password.value;
         const validDomains = pattern.test(domain.value) && pattern.test(authDomain.value);
+        const hasFile = backupFile.files && backupFile.files.length > 0;
 
-        button.disabled = !(allFilled && validDomains);
+        submitButton.disabled = !(allFilled && validDomains);
+        
+        restoreButton.disabled = !(hasFile && allFilled && validDomains);
     }
 
+    function handleRestore() {
+        const backupFile = document.getElementById('backup-file');
+        if (!backupFile.files || backupFile.files.length === 0) {
+            alert('Please select a backup file first.');
+            return;
+        }
+
+        const domain = document.getElementById('domain').value;
+        const authDomain = document.getElementById('auth-domain').value;
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        if (!domain || !authDomain || !username || !password) {
+            alert('Please fill in all form fields before restoring from backup.');
+            return;
+        }
+
+        document.getElementById('setup-form').submit();
+    }
+
+    // Add event listeners
     document.querySelectorAll('#setup-form input').forEach(input => {
         input.addEventListener('input', validateForm);
     });
+    
+    document.getElementById('backup-file').addEventListener('change', validateForm);
+    document.getElementById('restore-btn').addEventListener('click', handleRestore);
 </script>
 {% endblock %}

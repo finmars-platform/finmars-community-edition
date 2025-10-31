@@ -9,7 +9,7 @@ set -euo pipefail
 SCHEMA_RAW="${BASE_API_URL:-public}"
 SCHEMA_SAFE="$(printf '%s' "$SCHEMA_RAW" | tr -c '[:alnum:]_' '_' )"
 
-DBS=(core_realm00000 workflow_realm00000)
+DBS=(backend_realm00000 workflow_realm00000)
 
 for DB in "${DBS[@]}"; do
   echo "Ensuring database '$DB' exists…"

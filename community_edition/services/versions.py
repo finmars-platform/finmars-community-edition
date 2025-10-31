@@ -1,4 +1,3 @@
-import os
 import subprocess
 import requests
 
@@ -37,7 +36,7 @@ def get_latest_versions() -> dict[str, str]:
         return {}
 
 
-def get_current_versions():
+def get_current_versions() -> dict[str, dict[str, str]]:
     """Get current versions from .env file"""
     env = load_env()
     current_versions = {}
@@ -52,29 +51,7 @@ def get_current_versions():
     return current_versions
 
 
-def restart_containers():
-    """Restart containers using make down and make up"""
-    try:
-        project_root = os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        )
-
-        # Stop containers
-        result_down = subprocess.run(
-            ["make", "down"],
-            capture_output=True,
-            text=True,
-            cwd=project_root,
-            env=os.environ.copy(),
-        )
-        if result_down.returncode != 0:
-            return False, f"Failed to stop containers: {result_down.stderr}"
-
-        # Start containers
-        result_up = subprocess.run(["make", "up"], capture_output=True, text=True)
-        if result_up.returncode != 0:
-            return False, f"Failed to start containers: {result_up.stderr}"
-
-        return True, "Containers restarted successfully"
-    except Exception as e:
-        return False, f"Error restarting containers: {str(e)}"
+def set_versions_in_env() -> None:
+    result = subprocess.run(["make", "update-versions"], capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"Failed to update versions: {result.stderr}")
