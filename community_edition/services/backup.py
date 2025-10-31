@@ -40,11 +40,12 @@ def get_backup_list() -> list[dict]:
 def create_backup() -> None:
     """Create a backup by calling the create-dumps.sh script"""
     result = subprocess.run(["make", "create-dumps"], capture_output=True, text=True)
-    
+
     if result.returncode != 0:
         raise RuntimeError(f"Backup creation failed: {result.stderr}")
-    
+
     logger.info(f"Backup created successfully: {result.stdout}")
+
 
 def delete_backup(backup_filename) -> None:
     """Delete a backup directory"""
@@ -61,25 +62,21 @@ def restore_backup(timestamp: str) -> None:
     backup_path = os.path.join(BACKUP_DIR, timestamp)
     dump_zip_path = os.path.join(backup_path, "dump.zip")
     tmp_backup_path = os.path.join(PROJECT_DIR, "tmp", "backup.zip")
-    
+
     if not os.path.exists(dump_zip_path):
         raise ValueError(f"Backup dump.zip not found for timestamp: {timestamp}")
-    
+
     tmp_dir = os.path.join(PROJECT_DIR, "tmp")
     os.makedirs(tmp_dir, exist_ok=True)
     shutil.copy2(dump_zip_path, tmp_backup_path)
-    
+
     result = subprocess.run(
-        ["make", "restore-backup"], 
-        capture_output=True, 
-        text=True,
-        cwd=PROJECT_DIR
+        ["make", "restore-backup"], capture_output=True, text=True, cwd=PROJECT_DIR
     )
 
     if result.returncode != 0:
         if os.path.exists(tmp_backup_path):
             os.remove(tmp_backup_path)
         raise RuntimeError(f"Restore script failed: {result.stderr}")
-    
+
     logger.info(f"Backup restored successfully: {result.stdout}")
-    

@@ -37,7 +37,10 @@ def setup():
     if request.method == "POST":
         step = request.form.get("step")
         if step == "generate_env" and state.get(step) == "pending":
-            if 'backup_file' in request.files and (backup_file:=request.files['backup_file']).filename != '':
+            if (
+                "backup_file" in request.files
+                and (backup_file := request.files["backup_file"]).filename != ""
+            ):
                 os.makedirs(os.path.join(os.getcwd(), "tmp"), exist_ok=True)
                 backup_path = os.path.join(os.getcwd(), "tmp", "backup.zip")
                 backup_file.save(backup_path)
@@ -114,15 +117,20 @@ def versions():
     elif request.method == "PUT":
         try:
             set_versions_in_env()
-            
+
             down_containers()
             up_containers()
 
-            return jsonify({"success": True, "message": "Versions updated successfully. Containers restarted with new versions."})
+            return jsonify(
+                {
+                    "success": True,
+                    "message": "Versions updated successfully. Containers restarted with new versions.",
+                }
+            )
         except Exception as e:
             return jsonify({"success": False, "message": str(e)}), 500
 
- 
+
 @app.route("/backup", methods=["GET", "POST", "PUT", "DELETE"])
 def backup():
     if request.method == "GET":
@@ -159,17 +167,17 @@ def download_backup(timestamp):
     try:
         from community_edition.services.backup import BACKUP_DIR
         import os
-        
+
         dump_file_path = os.path.join(BACKUP_DIR, timestamp, "dump.zip")
-        
+
         if not os.path.exists(dump_file_path):
             return jsonify({"success": False, "message": "Backup file not found"}), 404
-        
+
         return send_file(
             dump_file_path,
             as_attachment=True,
             download_name=f"backup_{timestamp}.zip",
-            mimetype="application/zip"
+            mimetype="application/zip",
         )
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
@@ -180,24 +188,28 @@ def restore_backup_route(timestamp):
     """Restore a backup by stopping containers, running restore, and starting containers"""
     try:
         down_containers()
-        
+
         create_backup()
         restore_backup(timestamp)
-        
+
         up_containers()
-        
-        return jsonify({
-            "success": True, 
-            "message": f"Backup {timestamp} restored successfully. Containers stopped, backup restored, and containers restarted."
-        }), 200
-        
+
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Backup {timestamp} restored successfully. Containers stopped, backup restored, and containers restarted.",
+            }
+        ), 200
+
     except Exception as e:
         try:
             up_containers()
         except Exception as up_error:
-            return jsonify({
-                "success": False, 
-                "message": f"Restore failed: {str(e)}. Additionally, failed to restart containers: {str(up_error)}"
-            }), 500
-        
+            return jsonify(
+                {
+                    "success": False,
+                    "message": f"Restore failed: {str(e)}. Additionally, failed to restart containers: {str(up_error)}",
+                }
+            ), 500
+
         return jsonify({"success": False, "message": str(e)}), 500

@@ -92,15 +92,14 @@ def run_pending_step() -> None:
             current_index = step_names.index(step)
             while current_index + 1 < len(step_names):
                 current_index += 1
-                
+
                 next_step = step_names[current_index]
                 if state.get(next_step) == "pending":
                     state[next_step] = "requested"
                     save_state(state)
                     break
                 else:
-                    print(f"Skipping step {next_step} because it is not pending")           
-                    
+                    print(f"Skipping step {next_step} because it is not pending")
 
             if os.path.exists(LOG_FILE):
                 with open(LOG_FILE) as logf:

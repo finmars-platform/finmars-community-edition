@@ -7,7 +7,7 @@ def load_env() -> dict[str, str]:
     env: dict[str, str] = {}
     if not os.path.exists(ENV_FILE):
         return env
-    
+
     with open(ENV_FILE) as f:
         for line in f:
             line = line.strip()
