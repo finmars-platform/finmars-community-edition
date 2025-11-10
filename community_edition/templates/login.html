@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Sign in</h2>
+<p class="intro">Enter the credentials defined in `.env` to continue.</p>
+<form method="post">
+    <label for="username">Username</label>
+    <input id="username" name="username" type="text" required autofocus>
+
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" required>
+
+    {% if next_url %}
+        <input type="hidden" name="next_url" value="{{ next_url }}">
+    {% endif %}
+
+    <button class="btn" type="submit">Sign in</button>
+</form>
+
+<p class="footer-link">
+    <a href="{{ url_for('configurate.setup') }}">Back to setup</a>
+</p>
+{% endblock %}
+

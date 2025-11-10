@@ -1,4 +1,12 @@
-from flask import Flask, jsonify, request, render_template, redirect, url_for, send_file
+from flask import (
+    Blueprint,
+    jsonify,
+    request,
+    render_template,
+    redirect,
+    url_for,
+    send_file,
+)
 import subprocess
 import os
 
@@ -27,11 +35,12 @@ from community_edition.services.container import (
 
 
 setup_steps = get_setup_steps()
+env = load_env()
 
-app = Flask(__name__)
+configurate = Blueprint("configurate", __name__)
 
 
-@app.route("/", methods=["GET", "POST"])
+@configurate.route("/", methods=["GET", "POST"])
 def setup():
     state = load_state()
     if request.method == "POST":
@@ -88,12 +97,11 @@ def setup():
         if status in ("requested", "in_progress", "pending"):
             return render_template("status.html", title=title, logs=logs, status=status)
 
-    env = load_env()
     domain_name = env["DOMAIN_NAME"]
     return render_template("success.html", domain=domain_name)
 
 
-@app.route("/versions", methods=["GET", "PUT"])
+@configurate.route("/versions", methods=["GET", "PUT"])
 def versions():
     if request.method == "GET":
         current_versions = get_current_versions()
@@ -131,7 +139,7 @@ def versions():
             return jsonify({"success": False, "message": str(e)}), 500
 
 
-@app.route("/backup", methods=["GET", "POST", "PUT", "DELETE"])
+@configurate.route("/backup", methods=["GET", "POST", "PUT", "DELETE"])
 def backup():
     if request.method == "GET":
         backups = get_backup_list()
@@ -161,7 +169,7 @@ def backup():
             return jsonify({"success": False, "message": str(e)}), 500
 
 
-@app.route("/backup/<timestamp>/download")
+@configurate.route("/backup/<timestamp>/download")
 def download_backup(timestamp):
     """Download a backup dump.zip file"""
     try:
@@ -183,7 +191,7 @@ def download_backup(timestamp):
         return jsonify({"success": False, "message": str(e)}), 500
 
 
-@app.route("/backup/<timestamp>/restore", methods=["POST"])
+@configurate.route("/backup/<timestamp>/restore", methods=["POST"])
 def restore_backup_route(timestamp):
     """Restore a backup by stopping containers, running restore, and starting containers"""
     try:
