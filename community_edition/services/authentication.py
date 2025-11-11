@@ -2,6 +2,7 @@ from urllib.parse import urlparse, urljoin
 
 from flask import request, redirect, url_for
 
+
 def is_safe_url(target: str | None) -> bool:
     if not target:
         return False

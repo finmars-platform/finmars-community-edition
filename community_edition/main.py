@@ -1,7 +1,7 @@
 import logging
 import os
 
-from community_edition.app import create_app    
+from community_edition.app import create_app
 from community_edition.services.setup import LOG_FILE
 
 

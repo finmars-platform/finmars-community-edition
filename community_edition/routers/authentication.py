@@ -1,5 +1,3 @@
-from urllib.parse import urlparse, urljoin
-
 from flask import Blueprint, request, redirect, url_for, session, flash, render_template
 from community_edition.services.authentication import desired_next_url
 from community_edition.services.env import load_env
@@ -25,7 +23,6 @@ def login():
 
     if session.get("authenticated"):
         return redirect(redirect_target)
-
 
     if request.method == "POST":
         username = request.form.get("username", "").strip()
