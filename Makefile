@@ -30,6 +30,8 @@ up:
 	$(COMPOSE) -f $(COMPOSE_FILE) up --build -d \
 	--remove-orphans \
 	--scale certbot=0
+	@echo ""
+	@echo "Opening https://$(MAIN_DOMAIN_NAME) in browser..."
 
 down:
 	$(COMPOSE) down
