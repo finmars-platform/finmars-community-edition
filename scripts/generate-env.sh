@@ -4,7 +4,11 @@ if [ -f .env ]; then
   read -p ".env already exists. Overwrite? (y/N): " confirm
   if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
     echo "Aborted. Keeping existing .env file."
-    exit 0
+    if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+      return 0
+    else
+      exit 0
+    fi
   fi
 fi
 
@@ -47,6 +51,7 @@ ENCRYPTION_KEY=$(openssl rand -hex 32)
 DB_PASSWORD=$(openssl rand -hex 16)
 KC_DB_PASSWORD=$(openssl rand -hex 16)
 RABBITMQ_PASSWORD=$(openssl rand -hex 16)
+FLASK_SECRET_KEY=$(openssl rand -hex 32)
 
 sed \
   -e "s|^SECRET_KEY=.*|SECRET_KEY=${SECRET_KEY}|" \
@@ -55,6 +60,7 @@ sed \
   -e "s|^DB_PASSWORD=.*|DB_PASSWORD=${DB_PASSWORD}|" \
   -e "s|^KC_DB_PASSWORD=.*|KC_DB_PASSWORD=${KC_DB_PASSWORD}|" \
   -e "s|^RABBITMQ_PASSWORD=.*|RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}|" \
+  -e "s|^FLASK_SECRET_KEY=.*|FLASK_SECRET_KEY=${FLASK_SECRET_KEY}|" \
   -e "s|^DOMAIN_NAME=.*|DOMAIN_NAME=${INTERNAL_MAIN_DOMAIN}|" \
   -e "s|^CSRF_COOKIE_DOMAIN=.*|CSRF_COOKIE_DOMAIN=${MAIN_DOMAIN_NAME}|" \
   -e "s|^CSRF_TRUSTED_ORIGINS=.*|CSRF_TRUSTED_ORIGINS=${PROTO}://${MAIN_DOMAIN_NAME}|" \

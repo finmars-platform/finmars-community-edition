@@ -5,8 +5,14 @@ export
 COMPOSE = docker compose
 COMPOSE_FILE ?= docker-compose.yml
 
-.PHONY: generate-env init-keycloak init-cert update-versions up down db logs clean create-dumps restore-backup
+.PHONY: generate-env init-keycloak init-cert update-versions up down db logs clean create-dumps restore-backup install no-target
+.DEFAULT_GOAL := no-target
 
+no-target:
+	$(error No default target; please specify a goal, e.g. 'make install')
+
+install:
+	./scripts/install.sh
 
 generate-env:
 	./scripts/generate-env.sh
