@@ -53,14 +53,9 @@ git clone https://github.com/finmars-platform/finmars-community-edition.git
 # Navigate to the repository
 cd finmars-community-edition
 
-# Configure env file
-make generate-env
 
-# Configure Certs
-make init-cert
-
-# Init Keycloak
-make init-keycloak
+# Install envs, certificates, keycloak e.t.c
+make install
 
 # Run Finmars
 make up
