@@ -35,7 +35,7 @@ from community_edition.services.container import (
 
 
 setup_steps = get_setup_steps()
-env = load_env()
+
 
 configurate = Blueprint("configurate", __name__)
 
@@ -97,7 +97,8 @@ def setup():
         if status in ("requested", "in_progress", "pending"):
             return render_template("status.html", title=title, logs=logs, status=status)
 
-    domain_name = env["DOMAIN_NAME"]
+    env = load_env()
+    domain_name = env.get("DOMAIN_NAME")
     return render_template("success.html", domain=domain_name)
 
 

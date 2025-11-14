@@ -2,13 +2,13 @@ from flask import Blueprint, request, redirect, url_for, session, flash, render_
 from community_edition.services.authentication import desired_next_url
 from community_edition.services.env import load_env
 
-env = load_env()
 
 authentication = Blueprint("authentication", __name__)
 
 
 @authentication.route("/login", methods=["GET", "POST"])
 def login():
+    env = load_env()
     auth_login = env.get("ADMIN_USERNAME")
     auth_password = env.get("ADMIN_PASSWORD")
     if not auth_login or not auth_password:
