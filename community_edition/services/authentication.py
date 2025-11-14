@@ -17,7 +17,7 @@ def desired_next_url(candidate: str | None = None) -> str:
     candidate = (candidate or "/").rstrip("?")
     if candidate and is_safe_url(candidate):
         return candidate
-    return url_for("setup")
+    return url_for("configurate.setup")
 
 
 def redirect_to_login():

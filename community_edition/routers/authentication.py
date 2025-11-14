@@ -16,7 +16,7 @@ def login():
             "Credentials are not configured. Set ADMIN_USERNAME and ADMIN_PASSWORD in .env.",
             "warning",
         )
-        return redirect(url_for("setup"))
+        return redirect(url_for("configurate.setup"))
 
     next_param = request.args.get("next") or request.form.get("next_url")
     redirect_target = desired_next_url(next_param)

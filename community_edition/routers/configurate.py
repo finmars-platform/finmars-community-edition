@@ -80,12 +80,12 @@ def setup():
                     state[next_step] = "requested"
                     save_state(state)
 
-            return redirect(url_for("setup"))
+            return redirect(url_for("configurate.setup"))
 
         if step in state and state[step] == "pending":
             state[step] = "requested"
             save_state(state)
-        return redirect(url_for("setup"))
+        return redirect(url_for("configurate.setup"))
 
     logs = subprocess.run(
         ["docker", "compose", "logs"], capture_output=True, text=True
