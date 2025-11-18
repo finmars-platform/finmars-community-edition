@@ -4,7 +4,6 @@ import os
 from community_edition.app import create_app
 from community_edition.services.setup import LOG_FILE
 
-
 if __name__ == "__main__":
     if os.path.exists(LOG_FILE):
         os.remove(LOG_FILE)

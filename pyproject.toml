@@ -1,0 +1,38 @@
+[project]
+name = "finmars-community-edition"
+version = "1.23.0"
+
+[tool.ruff]
+  line-length = 119
+  indent-width = 4
+  target-version = "py312"
+
+
+[tool.ruff.lint]
+  select = [
+    "E",    # pycodestyle
+    "F",    # Pyflakes
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "I",    # isort
+    "PL",   # Pylint
+  ]
+  ignore = [
+    "SIM108",   # Use ternary operator
+    "SIM102",   # Use a single if statement instead of nested if statements
+    "PLR2004",  # Magic value used in comparison, consider replacing 201 with a constant variable
+  ]
+
+[tool.ruff.lint.flake8-quotes]
+  inline-quotes = "double"
+
+[tool.ruff.lint.pylint]
+  max-args = 20
+  max-positional-args = 20
+  max-branches = 15
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
+pythonpath = ["."]

@@ -1,7 +1,7 @@
-from flask import Blueprint, request, redirect, url_for, session, flash, render_template
+from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+
 from community_edition.services.authentication import desired_next_url
 from community_edition.services.env import load_env
-
 
 authentication = Blueprint("authentication", __name__)
 

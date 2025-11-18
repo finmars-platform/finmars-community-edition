@@ -1,8 +1,8 @@
 import subprocess
+
 import requests
 
 from community_edition.services.env import load_env
-
 
 API_URL = "https://license.finmars.com/api/v1/version/get-latest/?channel=stable"
 
@@ -52,6 +52,6 @@ def get_current_versions() -> dict[str, dict[str, str]]:
 
 
 def set_versions_in_env() -> None:
-    result = subprocess.run(["make", "update-versions"], capture_output=True, text=True)
+    result = subprocess.run(["make", "update-versions"], check=False, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(f"Failed to update versions: {result.stderr}")
