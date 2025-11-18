@@ -1,8 +1,8 @@
 import logging
 import os
 import shutil
-from datetime import datetime
 import subprocess
+from datetime import datetime
 
 PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 BACKUP_DIR = os.path.join(PROJECT_DIR, "dumps")
@@ -39,7 +39,7 @@ def get_backup_list() -> list[dict]:
 
 def create_backup() -> None:
     """Create a backup by calling the create-dumps.sh script"""
-    result = subprocess.run(["make", "create-dumps"], capture_output=True, text=True)
+    result = subprocess.run(["make", "create-dumps"], check=False, capture_output=True, text=True)
 
     if result.returncode != 0:
         raise RuntimeError(f"Backup creation failed: {result.stderr}")
@@ -70,9 +70,7 @@ def restore_backup(timestamp: str) -> None:
     os.makedirs(tmp_dir, exist_ok=True)
     shutil.copy2(dump_zip_path, tmp_backup_path)
 
-    result = subprocess.run(
-        ["make", "restore-backup"], capture_output=True, text=True, cwd=PROJECT_DIR
-    )
+    result = subprocess.run(["make", "restore-backup"], check=False, capture_output=True, text=True, cwd=PROJECT_DIR)
 
     if result.returncode != 0:
         if os.path.exists(tmp_backup_path):

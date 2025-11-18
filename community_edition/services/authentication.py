@@ -1,6 +1,6 @@
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urljoin, urlparse
 
-from flask import request, redirect, url_for
+from flask import redirect, request, url_for
 
 
 def is_safe_url(target: str | None) -> bool:

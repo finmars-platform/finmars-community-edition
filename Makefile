@@ -5,7 +5,7 @@ export
 COMPOSE = docker compose
 COMPOSE_FILE ?= docker-compose.yml
 
-.PHONY: generate-env init-keycloak init-cert update-versions up down db logs clean create-dumps restore-backup install no-target
+.PHONY: generate-env init-keycloak init-cert update-versions up down db logs clean create-dumps restore-backup install no-target tests
 .DEFAULT_GOAL := no-target
 
 no-target:
@@ -45,6 +45,9 @@ logs:
 linters:
 	ruff format; \
 	ruff check --fix; \
+
+tests:
+	pytest
 
 create-dumps:
 	./scripts/create-dumps.sh

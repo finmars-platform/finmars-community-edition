@@ -3,7 +3,6 @@ import os
 import subprocess
 import sys
 
-
 STATE_FILE = ".init-setup-state.json"
 LOG_FILE = "init-setup-log.txt"
 
@@ -55,7 +54,7 @@ def disable_autostart() -> None:
         subprocess.run(["systemctl", "daemon-reload"], check=False)
     except Exception:
         pass
-    try:
+    try:  # noqa: SIM105
         subprocess.run(
             "(crontab -l | grep -v 'init-setup.py --run-step') | crontab -",
             shell=True,
@@ -76,7 +75,7 @@ def run_pending_step() -> None:
             state[step] = "in_progress"
             save_state(state)
             try:
-                proc = subprocess.run(cmd, capture_output=True, text=True)
+                proc = subprocess.run(cmd, check=False, capture_output=True, text=True)
                 append_log(title, proc.stdout, proc.stderr)
                 state[step] = "done" if proc.returncode == 0 else "failed"
             except Exception as e:
