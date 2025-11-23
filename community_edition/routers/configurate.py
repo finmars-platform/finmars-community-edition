@@ -1,39 +1,15 @@
+import io
 import os
 import subprocess
 
-from flask import (
-    Blueprint,
-    jsonify,
-    redirect,
-    render_template,
-    request,
-    send_file,
-    url_for,
-)
+from flask import Blueprint, jsonify, redirect, render_template, request, send_file, url_for
 
-from community_edition.services.backup import (
-    BACKUP_DIR,
-    create_backup,
-    delete_backup,
-    get_backup_list,
-    restore_backup,
-)
-from community_edition.services.container import (
-    down_containers,
-    up_containers,
-)
+from community_edition.services.backup import BACKUP_DIR, create_backup, delete_backup, get_backup_list, restore_backup
+from community_edition.services.container import down_containers, up_containers
 from community_edition.services.env import load_env
-from community_edition.services.setup import (
-    append_log,
-    get_setup_steps,
-    load_state,
-    save_state,
-)
-from community_edition.services.versions import (
-    get_current_versions,
-    get_latest_versions,
-    set_versions_in_env,
-)
+from community_edition.services.logs import get_docker_compose_logs
+from community_edition.services.setup import append_log, get_setup_steps, load_state, save_state
+from community_edition.services.versions import get_current_versions, get_latest_versions, set_versions_in_env
 
 setup_steps = get_setup_steps()
 
@@ -83,7 +59,7 @@ def setup():
             save_state(state)
         return redirect(url_for("configurate.setup"))
 
-    logs = subprocess.run(["docker", "compose", "logs"], check=False, capture_output=True, text=True).stdout
+    logs = get_docker_compose_logs()
     for step, _, title in get_setup_steps():
         status = state.get(step)
         if step == "generate_env" and status == "pending":
@@ -94,6 +70,23 @@ def setup():
     env = load_env()
     domain_name = env.get("DOMAIN_NAME")
     return render_template("success.html", domain=domain_name)
+
+
+@configurate.route("/logs", methods=["GET"])
+def logs():
+    logs_text = get_docker_compose_logs()
+    return render_template("logs.html", logs=logs_text)
+
+
+@configurate.route("/logs/download", methods=["GET"])
+def download_logs():
+    logs_text = get_docker_compose_logs()
+    return send_file(
+        io.BytesIO(logs_text.encode("utf-8", errors="replace")),
+        as_attachment=True,
+        download_name="finmars-logs.txt",
+        mimetype="text/plain",
+    )
 
 
 @configurate.route("/versions", methods=["GET", "PUT"])

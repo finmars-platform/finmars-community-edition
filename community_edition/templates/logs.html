@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="margin-bottom: 20px;">
+    <a href="/" style="color: #007BFF; text-decoration: none; font-weight: 500;">← Back to Setup</a>
+</div>
+
+<h2>Logs</h2>
+<p class="intro">
+    Below are the latest logs from all Finmars services (output of <code>docker compose logs</code>).
+    Use the button below to download everything as a single text file.
+    This is useful when sending logs to support or keeping a snapshot before changes.
+</p>
+
+<div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+    <form method="get" action="{{ url_for('configurate.download_logs') }}">
+        <button class="btn" type="submit">⬇ Download all logs</button>
+    </form>
+    <button onclick="window.location.reload()" class="btn">🔄 Refresh</button>
+</div>
+
+<pre id="log-box" style="max-height: 70vh; overflow-y: scroll;">{{ logs }}</pre>
+
+<script>
+    window.onload = function() {
+        var logBox = document.getElementById("log-box");
+        if (logBox) {
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+    };
+</script>
+{% endblock %}

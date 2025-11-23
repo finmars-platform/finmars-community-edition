@@ -120,3 +120,23 @@ class TestBackup:
         data = resp.get_json()
         assert data["success"] is True
         assert called.get("ts") == "20250101000000"
+
+
+class TestLogs:
+    def test_logs_page_renders_with_logs_text(self, app, auth_client, fake_get_logs):
+        resp = auth_client.get("/logs")
+
+        assert resp.status_code == 200
+        assert b"fake-logs-output" in resp.data
+        assert fake_get_logs.get("called") is True
+
+    def test_logs_download_returns_text_file_with_logs(self, app, auth_client, fake_get_logs):
+        fake_get_logs["text"] = "downloadable-logs"
+        resp = auth_client.get("/logs/download")
+
+        assert resp.status_code == 200
+        assert resp.mimetype == "text/plain"
+        assert b"downloadable-logs" in resp.data
+        content_disposition = resp.headers.get("Content-Disposition", "")
+        assert "attachment" in content_disposition
+        assert "finmars-logs.txt" in content_disposition

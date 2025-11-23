@@ -71,9 +71,10 @@ services:
       start_period: 60s
 
   core: &core-base
-    image: finmars/finmars-core:${CORE_IMAGE_VERSION}
-    # build:
-    #   context: ../finmars-core
+    # image: finmars/finmars-core:${CORE_IMAGE_VERSION}
+    image: finmars/finmars-core:latest
+    build:
+      context: ../finmars-core
     platform: linux/amd64
     restart: always
     volumes:
@@ -83,6 +84,7 @@ services:
     environment:
       - DB_NAME=backend_realm00000
       - DJANGO_SETTINGS_MODULE=poms_app.settings
+      - SENTRY_DSN=https://037aa6153e3acdd13726f04512706758@sentry.finmars.com/2
     depends_on:
       core-migration:
         condition: service_completed_successfully

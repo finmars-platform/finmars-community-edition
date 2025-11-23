@@ -1,6 +1,7 @@
 import pytest
 
 from community_edition.app import create_app
+from community_edition.routers import configurate as cfg
 
 
 @pytest.fixture
@@ -46,3 +47,20 @@ def auth_client(client):
     with client.session_transaction() as sess:
         sess["authenticated"] = True
     return client
+
+
+@pytest.fixture
+def fake_get_logs(monkeypatch):
+    """
+    Fixture that patches configurate.get_docker_compose_logs and
+    returns a mutable state dict so tests can control the returned
+    log text and check whether it was called.
+    """
+    state = {"text": "fake-logs-output", "called": False}
+
+    def _fake_get_logs():
+        state["called"] = True
+        return state["text"]
+
+    monkeypatch.setattr(cfg, "get_docker_compose_logs", _fake_get_logs)
+    return state
