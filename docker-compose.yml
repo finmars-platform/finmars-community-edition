@@ -71,10 +71,7 @@ services:
       start_period: 60s
 
   core: &core-base
-    # image: finmars/finmars-core:${CORE_IMAGE_VERSION}
-    image: finmars/finmars-core:latest
-    build:
-      context: ../finmars-core
+    image: finmars/finmars-core:${CORE_IMAGE_VERSION}
     platform: linux/amd64
     restart: always
     volumes:
@@ -101,17 +98,6 @@ services:
     <<: *core-base
     command: >
       sh -c "celery --app poms_app worker --concurrency=1 --loglevel=INFO -n $CORE_WORKER_NAME -Q $CORE_QUEUES --max-tasks-per-child=1"
-
-  # core-system-worker:
-  #   <<: *core-base
-  #   command: >
-  #     sh -c "celery --app poms_app worker --concurrency=1 --loglevel=INFO -n $CORE_SYSTEM_WORKER_NAME -Q $CORE_SYSTEM_QUEUES --max-tasks-per-child=1"
-
-  # core-scheduler:
-  #   <<: *core-base
-  #   command: >
-  #     sh -c "celery --app poms_app beat --loglevel=INFO --scheduler poms.common.celery:PerSpaceDatabaseScheduler --pidfile=/tmp/celerybeat.pid"
-
   core-migration:
     <<: *core-base
     restart: "no" 
@@ -124,8 +110,6 @@ services:
 
   workflow: &workflow-base
     image: finmars/finmars-workflow:${WORKFLOW_IMAGE_VERSION}
-    # build:
-    #   context: ../finmars-workflow
     platform: linux/amd64
     restart: always
     volumes:
