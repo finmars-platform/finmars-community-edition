@@ -140,3 +140,60 @@ class TestLogs:
         content_disposition = resp.headers.get("Content-Disposition", "")
         assert "attachment" in content_disposition
         assert "finmars-logs.txt" in content_disposition
+
+
+class TestKeycloakUsers:
+    def test_add_user_get_renders_page_and_users_table(self, app, auth_client, monkeypatch):
+        def fake_list_users():
+            return [
+                {"username": "u1", "firstName": "User", "lastName": "One", "email": "u1@example.com", "enabled": True},
+                {"username": "u2", "firstName": None, "lastName": None, "email": None, "enabled": False},
+            ]
+
+        monkeypatch.setattr(cfg, "list_keycloak_users", fake_list_users)
+
+        resp = auth_client.get("/keycloak/add-user")
+
+        assert resp.status_code == 200
+        # table header and some values
+        assert b"Current users" in resp.data
+        assert b"u1@example.com" in resp.data
+        assert b"u2" in resp.data
+
+    def test_add_user_post_validates_and_calls_service(self, app, auth_client, monkeypatch):
+        created = {}
+
+        def fake_add_user(username, password):
+            created["username"] = username
+            created["password"] = password
+
+        def fake_list_users():
+            return []
+
+        monkeypatch.setattr(cfg, "add_keycloak_user", fake_add_user)
+        monkeypatch.setattr(cfg, "list_keycloak_users", fake_list_users)
+
+        resp = auth_client.post(
+            "/keycloak/add-user",
+            data={"username": "alice", "password": "secret"},
+            follow_redirects=True,
+        )
+
+        assert resp.status_code == 200
+        assert created["username"] == "alice"
+        assert created["password"] == "secret"
+        # success flash should mention the user
+        assert b"alice" in resp.data
+
+    def test_add_user_post_missing_fields_shows_error(self, app, auth_client, monkeypatch):
+        # list_keycloak_users is still required for rendering
+        monkeypatch.setattr(cfg, "list_keycloak_users", lambda: [])
+
+        resp = auth_client.post(
+            "/keycloak/add-user",
+            data={"username": "", "password": ""},
+            follow_redirects=True,
+        )
+
+        assert resp.status_code == 200
+        assert b"Username and password are required" in resp.data

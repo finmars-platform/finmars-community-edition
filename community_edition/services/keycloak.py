@@ -4,7 +4,6 @@ from typing import Any, Final
 
 from .backup import PROJECT_DIR
 
-
 ADD_KEYCLOAK_USER_CMD: Final[list[str]] = ["make", "add-user"]
 LIST_KEYCLOAK_USERS_CMD: Final[list[str]] = ["make", "list-users"]
 
@@ -30,9 +29,7 @@ def add_keycloak_user(username: str, password: str) -> str:
 
     if result.returncode != 0:
         raise RuntimeError(
-            "Failed to add Keycloak user via CLI.\n"
-            f"Command: {' '.join(cmd)}\n"
-            f"Output:\n{combined_output}".strip()
+            f"Failed to add Keycloak user via CLI.\nCommand: {' '.join(cmd)}\nOutput:\n{combined_output}".strip()
         )
 
     return combined_output.strip()
@@ -81,5 +78,3 @@ def list_keycloak_users() -> list[dict[str, Any]]:
         raise RuntimeError(f"Unexpected Keycloak users format: {type(data)!r}")
 
     return data
-
-
