@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="margin-bottom: 20px;">
+    <a href="/" style="color: #007BFF; text-decoration: none; font-weight: 500;">← Back to Setup</a>
+</div>
+
+<h2>Add User</h2>
+
+<form method="POST" style="max-width: 480px;">
+    <label>Username:<br>
+        <input name="username" required placeholder="new_user" value="{{ username|default('') }}">
+    </label>
+
+    <label>Password:<br>
+        <input name="password" type="password" required placeholder="Enter a strong password">
+    </label>
+
+    <button type="submit" class="btn">➕ Create Keycloak User</button>
+</form>
+
+{% if users %}
+    <div style="margin-top: 30px;">
+        <h3>Current users</h3>
+        <div style="max-height: 60vh; overflow-y: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                <thead>
+                    <tr style="background: #f0f0f0;">
+                        <th style="padding: 8px; border-bottom: 1px solid #ddd; text-align: left;">Username</th>
+                        <th style="padding: 8px; border-bottom: 1px solid #ddd; text-align: left;">Name</th>
+                        <th style="padding: 8px; border-bottom: 1px solid #ddd; text-align: left;">Email</th>
+                        <th style="padding: 8px; border-bottom: 1px solid #ddd; text-align: left;">Enabled</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">{{ user.username }}</td>
+                        <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">
+                            {{ (user.firstName or '') ~ (' ' if user.firstName and user.lastName else '') ~ (user.lastName or '') }}
+                        </td>
+                        <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">{{ user.email or '—' }}</td>
+                        <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">
+                            {% if user.enabled %}Yes{% else %}No{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

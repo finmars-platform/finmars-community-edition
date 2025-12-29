@@ -5,7 +5,7 @@ export
 COMPOSE = docker compose
 COMPOSE_FILE ?= docker-compose.yml
 
-.PHONY: generate-env init-keycloak init-cert update-versions up down db logs clean create-dumps restore-backup install no-target tests
+.PHONY: generate-env init-keycloak init-cert update-versions up down db logs clean create-dumps restore-backup install no-target tests add-user list-users
 .DEFAULT_GOAL := no-target
 
 no-target:
@@ -55,19 +55,11 @@ create-dumps:
 restore-backup:
 	./scripts/restore-backup.sh
 
+add-user:
+	./scripts/add-keycloak-user.sh --username $(USERNAME) --password $(PASSWORD)
+
+list-users:
+	./scripts/list-keycloak-users.sh
+
 clean:
-	@if [ -n "$(VOLUME_NAME)" ]; then \
-		if [ "$$(docker volume ls -q --filter name=$(VOLUME_NAME))" ]; then \
-			docker volume rm $(VOLUME_NAME); \
-			echo "Removed volume: $(VOLUME_NAME)"; \
-		else \
-			echo "Volume $(VOLUME_NAME) not found"; \
-		fi; \
-	else \
-		if [ "$$($(COMPOSE) -f $(COMPOSE_FILE) config --volumes)" ]; then \
-			$(COMPOSE) -f $(COMPOSE_FILE) down -v; \
-			echo "Removed volumes for current project"; \
-		else \
-			echo "No volumes to remove for current project"; \
-		fi; \
-	fi
+	VOLUME_NAME="$(VOLUME_NAME)" COMPOSE="$(COMPOSE)" COMPOSE_FILE="$(COMPOSE_FILE)" ./scripts/clean.sh
