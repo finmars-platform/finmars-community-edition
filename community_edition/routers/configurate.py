@@ -2,11 +2,12 @@ import io
 import os
 import subprocess
 
-from flask import Blueprint, jsonify, redirect, render_template, request, send_file, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, send_file, url_for
 
 from community_edition.services.backup import BACKUP_DIR, create_backup, delete_backup, get_backup_list, restore_backup
 from community_edition.services.container import down_containers, up_containers
 from community_edition.services.env import load_env
+from community_edition.services.keycloak import add_keycloak_user, list_keycloak_users
 from community_edition.services.logs import get_docker_compose_logs
 from community_edition.services.setup import append_log, get_setup_steps, load_state, save_state
 from community_edition.services.versions import get_current_versions, get_latest_versions, set_versions_in_env
@@ -206,3 +207,30 @@ def restore_backup_route(timestamp):
             ), 500
 
         return jsonify({"success": False, "message": str(e)}), 500
+
+
+@configurate.route("/keycloak/add-user", methods=["GET", "POST"])
+def keycloak_add_user():
+    username = ""
+    users: list[dict] | None = None
+
+    if request.method == "POST":
+        username = request.form.get("username").strip()
+        password = request.form.get("password")
+
+        if not username or not password:
+            flash("Username and password are required.", "error")
+        else:
+            try:
+                add_keycloak_user(username=username, password=password)
+                flash(f"User '{username}' has been created in Keycloak.", "success")
+                username = ""
+            except Exception as exc:  # pragma: no cover - defensive
+                flash(str(exc), "error")
+
+    try:
+        users = list_keycloak_users()
+    except Exception as exc:  # pragma: no cover - defensive
+        flash(f"Failed to load current users: {exc}", "error")
+
+    return render_template("add_keycloak_user.html", username=username, users=users)
