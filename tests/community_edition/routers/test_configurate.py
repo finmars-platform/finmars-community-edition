@@ -1,3 +1,4 @@
+import io
 import types
 
 from community_edition.routers import configurate as cfg
@@ -99,6 +100,79 @@ class TestBackup:
         assert resp.status_code == 200
         assert resp.get_json()["success"] is True
         assert called.get("ok") is True
+
+    def test_backup_post_restore_from_uploaded_file_success(self, app, auth_client, monkeypatch, tmp_path):
+        called = {"down": False, "up": False, "created": False, "restored": False}
+
+        def fake_down():
+            called["down"] = True
+
+        def fake_up():
+            called["up"] = True
+
+        def fake_create():
+            called["created"] = True
+
+        def fake_restore_uploaded():
+            called["restored"] = True
+
+        # Use a temporary project directory so /tmp path is safe in tests
+        monkeypatch.setattr(cfg, "PROJECT_DIR", str(tmp_path))
+        monkeypatch.setattr(cfg, "down_containers", fake_down)
+        monkeypatch.setattr(cfg, "up_containers", fake_up)
+        monkeypatch.setattr(cfg, "create_backup", fake_create)
+        monkeypatch.setattr(cfg, "restore_backup_from_uploaded_file", fake_restore_uploaded)
+
+        data = {
+            "backup_file": (io.BytesIO(b"dummy-backup-data"), "backup.zip"),
+        }
+
+        resp = auth_client.post("/backup", data=data, content_type="multipart/form-data")
+
+        assert resp.status_code == 200
+        body = resp.get_json()
+        assert body["success"] is True
+        assert called["down"] is True
+        assert called["up"] is True
+        assert called["created"] is True
+        assert called["restored"] is True
+
+    def test_backup_post_restore_from_uploaded_file_failure(self, app, auth_client, monkeypatch, tmp_path):
+        called = {"down": False, "up": False, "created": False, "restored": False}
+
+        def fake_down():
+            called["down"] = True
+
+        def fake_up():
+            called["up"] = True
+
+        def fake_create():
+            called["created"] = True
+
+        def fake_restore_uploaded():
+            called["restored"] = True
+            raise RuntimeError("restore failed")
+
+        monkeypatch.setattr(cfg, "PROJECT_DIR", str(tmp_path))
+        monkeypatch.setattr(cfg, "down_containers", fake_down)
+        monkeypatch.setattr(cfg, "up_containers", fake_up)
+        monkeypatch.setattr(cfg, "create_backup", fake_create)
+        monkeypatch.setattr(cfg, "restore_backup_from_uploaded_file", fake_restore_uploaded)
+
+        data = {
+            "backup_file": (io.BytesIO(b"dummy-backup-data"), "backup.zip"),
+        }
+
+        resp = auth_client.post("/backup", data=data, content_type="multipart/form-data")
+
+        assert resp.status_code == 500
+        body = resp.get_json()
+        assert body["success"] is False
+        assert "restore failed" in body["message"]
+        assert called["down"] is True
+        assert called["up"] is True
+        assert called["created"] is True
+        assert called["restored"] is True
 
     def test_backup_delete_requires_timestamp(app, auth_client, monkeypatch):
         resp = auth_client.delete("/backup", json={})

@@ -5,7 +5,7 @@ export
 COMPOSE = docker compose
 COMPOSE_FILE ?= docker-compose.yml
 
-.PHONY: generate-env init-keycloak init-cert update-versions up down db logs clean create-dumps restore-backup install no-target tests add-user list-users
+.PHONY: generate-env init-keycloak init-cert update-versions up down db logs clean create-dumps restore-backup install no-target tests add-user list-users setup-ui
 .DEFAULT_GOAL := no-target
 
 no-target:
@@ -63,3 +63,6 @@ list-users:
 
 clean:
 	VOLUME_NAME="$(VOLUME_NAME)" COMPOSE="$(COMPOSE)" COMPOSE_FILE="$(COMPOSE_FILE)" ./scripts/clean.sh
+
+setup-ui:
+	./scripts/setup-ui.sh

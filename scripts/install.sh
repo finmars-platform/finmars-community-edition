@@ -6,5 +6,7 @@ source scripts/init-cert.sh
 source scripts/init-keycloak.sh
 source scripts/update-versions.sh
 
+source scripts/setup-ui.sh
+
 echo -e '\nInstallation complete!'    
 echo -e '\nYou can now run "make up" to start the services.'
