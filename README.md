@@ -40,7 +40,7 @@ wget -qO- https://get.docker.com/ | sh
 sudo usermod -aG docker $USER
 newgrp docker
 
-sudo apt install make
+sudo apt install make git
 
 sudo apt install python3-pip -y
 pip install flask

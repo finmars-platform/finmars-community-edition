@@ -54,6 +54,22 @@
     {% endif %}
 </div>
 
+<div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-top: 30px; border-left: 4px solid #17a2b8;">
+    <h3 style="margin-top: 0; color: #17a2b8;">🔄 Restore from Backup File</h3>
+    <p style="margin: 10px 0; font-size: 0.9rem; color: #666;">
+        Upload a backup file (dump.zip from another Finmars instance) to restore it on this server.
+    </p>
+    <form id="restoreFromFileForm" enctype="multipart/form-data" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+        <input type="file" id="restoreBackupFile" name="backup_file" accept=".zip" style="flex: 1 1 auto; max-width: 320px;">
+        <button type="submit" class="btn" id="restoreFromFileButton" style="background-color: #17a2b8; margin: 0; white-space: nowrap;" disabled>
+            🔄 Restore from File
+        </button>
+    </form>
+    <p style="margin-top: 10px; font-size: 0.85rem; color: #856404;">
+        Restoring from a file will completely overwrite the current data with the contents of the uploaded backup. A safety backup of the current state will be created automatically.
+    </p>
+</div>
+
 <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #007BFF;">
     <h4 style="margin-top: 0; color: #007BFF;">ℹ️ Backup Information</h4>
     <ul style="margin: 10px 0; padding-left: 20px;">
@@ -106,18 +122,43 @@
         color: #856404;
         border: 1px solid #ffeaa7;
     }
+
+    input[type="file"] {
+        padding: 8px;
+        border: 2px dashed #17a2b8;
+        border-radius: 4px;
+        background-color: #f8f9fa;
+        cursor: pointer;
+        transition: border-color 0.3s ease;
+    }
+
+    input[type="file"]:hover {
+        border-color: #138496;
+    }
+
+    input[type="file"]:focus {
+        outline: none;
+        border-color: #138496;
+        box-shadow: 0 0 0 2px rgba(23, 162, 184, 0.25);
+    }
 </style>
 
 <script>
-    function showMessage(message, type = 'info') {
+    let messageTimeout;
+
+    function showMessage(message, type = 'info', durationMs = 5000) {
         const messageDiv = document.getElementById('message');
         messageDiv.textContent = message;
         messageDiv.className = type + '-message';
         messageDiv.style.display = 'block';
+
+        if (messageTimeout) {
+            clearTimeout(messageTimeout);
+        }
         
-        setTimeout(() => {
+        messageTimeout = setTimeout(() => {
             messageDiv.style.display = 'none';
-        }, 5000);
+        }, durationMs);
     }
     
     document.getElementById('createBackupForm').addEventListener('submit', async function(e) {
@@ -153,7 +194,72 @@
             document.body.classList.remove('loading');
         }
     });
-    
+
+    const restoreFileInput = document.getElementById('restoreBackupFile');
+    const restoreFileButton = document.getElementById('restoreFromFileButton');
+
+    if (restoreFileInput && restoreFileButton) {
+        restoreFileInput.addEventListener('change', function () {
+            restoreFileButton.disabled = !(restoreFileInput.files && restoreFileInput.files.length > 0);
+        });
+
+        document.getElementById('restoreFromFileForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            if (!restoreFileInput.files || restoreFileInput.files.length === 0) {
+                showMessage('Please select a backup file to upload.', 'warning');
+                return;
+            }
+
+            const warningMessage = `⚠️ WARNING: Restoring from an uploaded backup file will:\n\n` +
+                                  `• Stop all running containers\n` +
+                                  `• Replace current database and application data with the uploaded backup\n` +
+                                  `• Restart all containers\n\n` +
+                                  `This action will PERMANENTLY LOSE all current data!\n\n` +
+                                  `Are you absolutely sure you want to proceed?`;
+
+            if (!confirm(warningMessage)) {
+                return;
+            }
+
+            if (!confirm('FINAL WARNING: This will permanently replace all current data with the uploaded backup file. Do you want to continue?')) {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('backup_file', restoreFileInput.files[0]);
+
+            restoreFileButton.disabled = true;
+            restoreFileInput.disabled = true;
+            document.body.classList.add('loading');
+
+            showMessage('Uploading backup and starting restore process... This may take several minutes.', 'info', 180000);
+
+            try {
+                const response = await fetch('/backup', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage(result.message, 'success');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 3000);
+                } else {
+                    showMessage(result.message || 'Restore from uploaded file failed.', 'error');
+                }
+            } catch (error) {
+                showMessage('Error restoring from uploaded backup: ' + error.message, 'error');
+            } finally {
+                restoreFileButton.disabled = false;
+                restoreFileInput.disabled = false;
+                document.body.classList.remove('loading');
+            }
+        });
+    }
 
     function downloadBackup(timestamp) {
         // Create a temporary link element to trigger download
@@ -178,19 +284,14 @@
         if (!confirm(warningMessage)) {
             return;
         }
-        
-        // Double confirmation for safety
-        if (!confirm(`FINAL WARNING: This will permanently replace all current data with backup from "${date}".\n\nType "RESTORE" in the next dialog to confirm.`)) {
+
+        // Final confirmation for safety
+        if (!confirm(`FINAL WARNING: This will permanently replace all current data with backup from "${date}".\n\nDo you want to continue?`)) {
             return;
         }
         
-        const finalConfirmation = prompt(`Type "RESTORE" to confirm data replacement:`);
-        if (finalConfirmation !== "RESTORE") {
-            showMessage('Restore cancelled. You must type "RESTORE" to confirm.', 'warning');
-            return;
-        }
-        
-        showMessage('Starting restore process... This may take several minutes.', 'info');
+        document.body.classList.add('loading');
+        showMessage('Starting restore process... This may take several minutes.', 'info', 180000);
         
         try {
             const response = await fetch(`/backup/${timestamp}/restore`, {
@@ -213,6 +314,8 @@
             }
         } catch (error) {
             showMessage('Error restoring backup: ' + error.message, 'error');
+        } finally {
+            document.body.classList.remove('loading');
         }
     }
 

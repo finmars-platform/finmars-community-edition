@@ -4,7 +4,15 @@ import subprocess
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, send_file, url_for
 
-from community_edition.services.backup import BACKUP_DIR, create_backup, delete_backup, get_backup_list, restore_backup
+from community_edition.services.backup import (
+    BACKUP_DIR,
+    PROJECT_DIR,
+    create_backup,
+    delete_backup,
+    get_backup_list,
+    restore_backup,
+    restore_backup_from_uploaded_file,
+)
 from community_edition.services.container import down_containers, up_containers
 from community_edition.services.env import load_env
 from community_edition.services.keycloak import add_keycloak_user, list_keycloak_users
@@ -43,7 +51,7 @@ def setup():
             state["generate_env"] = "done" if proc.returncode == 0 else "failed"
             save_state(state)
 
-            step_names = [name for name, _, _ in get_setup_steps()]
+            step_names = [name for name, _, _ in setup_steps]
 
             current_index = step_names.index(step)
 
@@ -61,7 +69,7 @@ def setup():
         return redirect(url_for("configurate.setup"))
 
     logs = get_docker_compose_logs()
-    for step, _, title in get_setup_steps():
+    for step, _, title in setup_steps:
         status = state.get(step)
         if step == "generate_env" and status == "pending":
             return render_template("form.html")
@@ -128,12 +136,58 @@ def versions():
 
 
 @configurate.route("/backup", methods=["GET", "POST", "PUT", "DELETE"])
-def backup():
+def backup():  # noqa: PLR0911
     if request.method == "GET":
         backups = get_backup_list()
         return render_template("backup.html", backups=backups)
 
     elif request.method == "POST":
+        if "backup_file" in request.files and (backup_file := request.files["backup_file"]).filename != "":
+            tmp_dir = os.path.join(PROJECT_DIR, "tmp")
+            os.makedirs(tmp_dir, exist_ok=True)
+            tmp_backup_path = os.path.join(tmp_dir, "backup.zip")
+
+            backup_file.save(tmp_backup_path)
+
+            try:
+                down_containers()
+
+                create_backup()
+                restore_backup_from_uploaded_file()
+
+                up_containers()
+
+                return (
+                    jsonify(
+                        {
+                            "success": True,
+                            "message": (
+                                "Backup from uploaded file restored successfully. "
+                                "Containers stopped, backup restored, and containers restarted."
+                            ),
+                        }
+                    ),
+                    200,
+                )
+            except Exception as e:
+                try:
+                    up_containers()
+                except Exception as up_error:
+                    return (
+                        jsonify(
+                            {
+                                "success": False,
+                                "message": (
+                                    f"Restore failed: {str(e)}. "
+                                    f"Additionally, failed to restart containers: {str(up_error)}"
+                                ),
+                            }
+                        ),
+                        500,
+                    )
+
+                return jsonify({"success": False, "message": str(e)}), 500
+
         try:
             create_backup()
             return jsonify({"success": True, "message": "Backup created successfully"}), 200
