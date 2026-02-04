@@ -4,7 +4,9 @@ set -euo pipefail
 
 LOG_FILE="$(mktemp)"
 
-if ! pip install -r requirements.txt >"$LOG_FILE" 2>&1; then
+sudo apt install -y python3-pip
+
+if ! python3 -m pip install -r requirements.txt --break-system-packagest >"$LOG_FILE" 2>&1; then
   echo "UI setup failed during dependency installation. See error details below:"
   cat "$LOG_FILE"
   rm -f "$LOG_FILE"
