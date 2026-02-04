@@ -43,7 +43,7 @@ newgrp docker
 sudo apt install make git
 
 sudo apt install python3-pip -y
-pip install flask
+pip install -r requirements.txt (if get error user --break-system-packages option)
 
 
 # Clone the Finmars Community Edition repository
