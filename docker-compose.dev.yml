@@ -1,0 +1,95 @@
+services:
+  nginx:
+    environment:
+      - DEVELOP=1
+  db:
+    ports:
+      - 5432:5432
+  core: &core-base
+    image: ~ # Force Docker to build images locally instead of pulling them
+    pull_policy: build
+    build:
+      context: ../finmars-core
+      dockerfile: Dockerfile
+    environment:
+      - LOCAL=1
+    volumes:
+      - ../finmars-core/poms:/var/app/poms
+  core-worker: *core-base
+  core-migration: *core-base
+
+  portal:
+    image: ~ # Force Docker to build images locally instead of pulling them
+    pull_policy: build
+    build:
+      context: ../finmars-portal
+      dockerfile: Dockerfile
+    volumes:
+      - ../finmars-portal/libs:/var/www/finmars/libs
+      - ../finmars-portal/src:/var/www/finmars/src
+      - ../finmars-portal/vocabulary:/var/www/finmars/vocabulary
+
+  vue-portal:
+    image: ~ # Force Docker to build images locally instead of pulling them
+    pull_policy: build
+    build:
+      context: ../finmars-vue-portal
+      dockerfile_inline: |
+        FROM node:22-alpine
+        ENV NODE_ENV=development
+        RUN mkdir -p /var/www/finmars
+        WORKDIR /var/www/finmars
+        COPY package*.json ./
+        RUN npm install
+    env_file:
+      - .env
+    environment:
+      - NUXT_HOST=0.0.0.0
+      - NUXT_PORT=8080
+    volumes:
+      - ../finmars-vue-portal/src:/var/www/finmars/src
+      - ../finmars-vue-portal/nuxt.config.ts:/var/www/finmars/nuxt.config.ts
+      - ../finmars-vue-portal/tailwind.config.js:/var/www/finmars/tailwind.config.js
+      - ../finmars-vue-portal/tsconfig.json:/var/www/finmars/tsconfig.json:ro
+    command: node_modules/.bin/nuxt dev
+
+  workflow: &workflow-base
+    image: ~ # Force Docker to build images locally instead of pulling them
+    pull_policy: build
+    build:
+      context: ../finmars-workflow
+      dockerfile: Dockerfile
+    environment:
+      - LOCAL=1
+    volumes:
+      - ../finmars-workflow/workflow:/var/app/workflow
+      - ../finmars-workflow/workflow_app:/var/app/workflow_app
+
+  workflow-worker: *workflow-base
+  workflow-scheduler: *workflow-base
+  workflow-migration: *workflow-base
+  workflow-flower: *workflow-base
+
+  workflow-portal:
+    image: ~ # Force Docker to build images locally instead of pulling them
+    pull_policy: build
+    build:
+      context: ../finmars-workflow-portal
+      dockerfile_inline: |
+        FROM node:22-alpine
+        ENV NODE_ENV=development
+        RUN mkdir -p /var/www/finmars
+        WORKDIR /var/www/finmars
+        COPY package*.json ./
+        RUN npm install
+    env_file:
+      - .env
+    environment:
+      - NUXT_HOST=0.0.0.0
+      - NUXT_PORT=8080
+    volumes:
+      - ../finmars-workflow-portal/src:/var/www/finmars/src
+      - ../finmars-workflow-portal/nuxt.config.ts:/var/www/finmars/nuxt.config.ts
+      - ../finmars-workflow-portal/tailwind.config.js:/var/www/finmars/tailwind.config.js
+      - ../finmars-workflow-portal/tsconfig.json:/var/www/finmars/tsconfig.json:ro
+    command: node_modules/.bin/nuxt dev

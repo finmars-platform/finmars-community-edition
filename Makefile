@@ -4,6 +4,12 @@ export
 
 COMPOSE = docker compose
 COMPOSE_FILE ?= docker-compose.yml
+# Use ':' for all OS's. By default, Docker uses ':' on Linux/MacOS and ';' on Windows.
+COMPOSE_PATH_SEPARATOR = :
+
+ifdef DEV
+	COMPOSE_FILE := $(COMPOSE_FILE):docker-compose.dev.yml
+endif
 
 .PHONY: generate-env init-keycloak init-cert update-versions up down db logs clean create-dumps restore-backup install no-target tests add-user list-users setup-ui
 .DEFAULT_GOAL := no-target
@@ -27,7 +33,7 @@ update-versions:
 	./scripts/update-versions.sh
 
 up:
-	$(COMPOSE) -f $(COMPOSE_FILE) up --build -d \
+	$(COMPOSE) up --build -d \
 	--remove-orphans \
 	--scale certbot=0
 	@echo ""

@@ -23,43 +23,90 @@ Finmars runs in your web browser, so you and your team can use it from anywhere.
 
 ## Getting Started
 
-To install and to start using Finmars please refer [Getting Started Community Edition](https://docs.finmars.com/shelves/community-edition).
+To install and to start using Finmars, please refer [Getting Started Community Edition](https://docs.finmars.com/shelves/community-edition).
 
+### Installing the Prerequisites
 
-#### Self-Hosting with Docker Compose
-This is the simplest way to get a local Finmars instance running.
+This guide assumes you are deploying to a Debian-based Linux distribution. It may work on different Linux distributions, 
+or other OSes such as macOS, but you may need to change the package names and installation commands.
 
-On Linux or Mac Enviroment (preferable on your Linux Server VM):
+On the deployment machine, install the prerequisites first:
+
 ```bash
 # Install Updates
-
 sudo apt update
 
-sudo apt install -y ca-certificates curl gnupg lsb-release ntp unzip zip
+# Install dependencies
+sudo apt install -y ca-certificates curl git gnupg lsb-release make ntp python3-pip unzip zip
+
+# Install docker (or follow https://docs.docker.com/engine/install/)
 wget -qO- https://get.docker.com/ | sh
 sudo usermod -aG docker $USER
 newgrp docker
 
-sudo apt install make git
+# Install Python dependencies
+pip install -r requirements.txt # (if you get an error, use the --break-system-packages option)
+```
 
-sudo apt install python3-pip -y
-pip install -r requirements.txt (if get error user --break-system-packages option)
+### Self-Hosting with Docker Compose
 
+[Install the prerequisites first](#installing-the-prerequisites).
 
+This is the simplest way to get a local Finmars instance running using prebuilt images from
+our [Docker](https://hub.docker.com/u/finmars). However, if you want to modify any code, you 
+are better off following [Locally Developing Finmars](#locally-developing-finmars).
+
+On Linux or Mac Enviroment (preferable on your Linux Server VM):
+```bash
 # Clone the Finmars Community Edition repository
 git clone https://github.com/finmars-platform/finmars-community-edition.git
 
-
 # Navigate to the repository
 cd finmars-community-edition
-
 
 # Install envs, certificates, keycloak e.t.c
 make install
 
 # Run Finmars
 make up
+```
 
+### Locally Developing Finmars
+
+[Install the prerequisites first](#installing-the-prerequisites).
+
+This is a more involved way to set up Finmars, by building images directly from source code and enabling hot
+reloading code on change. Ideal for developing Finmars locally.
+
+```sh
+# 1. Create and enter a directory for Finmars
+mkdir finmars && cd finmars
+
+# 2. Clone all repositories
+finmars_repos="finmars-community-edition finmars-core finmars-portal finmars-vue-portal finmars-workflow finmars-workflow-portal"
+for repo in $finmars_repos; do
+    git clone "https://github.com/finmars-platform/$repo.git"
+done
+
+# Your directory now should look like this:
+ls -1
+# finmars-community-edition
+# finmars-core
+# finmars-portal
+# finmars-vue-portal
+# finmars-workflow
+# finmars-workflow-portal
+
+# 3. Enter the community-edition directory
+cd finmars-community-edition
+
+# 4. Build and install envs, certificates, keycloak etc
+make DEV=1 install
+
+# 5. Run Finmars in development mode, with hot-reload enabled
+make DEV=1 up
+
+# Alternatively, set DEV=1 in your environment variables and run `make install`, `make up` and so on
 ```
 
 ## Local Development
