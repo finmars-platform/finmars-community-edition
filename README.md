@@ -101,12 +101,12 @@ ls -1
 cd finmars-community-edition
 
 # 4. Build and install envs, certificates, keycloak etc
-make DEV=1 install
+
+# When you are asked to select a version, select local
+make install
 
 # 5. Run Finmars in development mode, with hot-reload enabled
-make DEV=1 up
-
-# Alternatively, set DEV=1 in your environment variables and run `make install`, `make up` and so on
+make up
 ```
 
 ## Local Development
