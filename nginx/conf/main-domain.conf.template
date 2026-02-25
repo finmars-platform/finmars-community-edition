@@ -1,3 +1,14 @@
+# For use in websockets
+map $http_upgrade $connection_upgrade {
+	default  upgrade;
+	''       close;
+}
+
+map ${DEVELOP} $develop {
+	1        1;
+	default  0;
+}
+
 server {
 	listen 443 ssl;
 	server_name ${MAIN_DOMAIN_NAME} nginx;
@@ -180,11 +191,20 @@ server {
 	{
 		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 		proxy_set_header Host $http_host;
+		# Proxy websockets
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
 		proxy_redirect off;
 
 		# Use the captured group $1 for the dynamic part of the domain
 		# Use the captured group $2 for the latter part of the path
 		proxy_pass http://vue-portal:8080/_nuxt/$2;
+
+		if ($develop) {
+		  # The nuxt develop server does not want the /_nuxt/ stripped,
+		  # and I could not configure it otherwise, so pass the entire path
+		  proxy_pass http://vue-portal:8080;
+		}
 
 		# kill cache
 		add_header Last-Modified $date_gmt;
@@ -198,11 +218,19 @@ server {
 	{
 		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 		proxy_set_header Host $http_host;
+		# Proxy websockets
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
 		proxy_redirect off;
 
 		# Use the captured group $1 for the dynamic part of the domain
 		# Use the captured group $2 for the latter part of the path
 		proxy_pass http://workflow-portal:8080/_nuxt/$2;
+		if ($develop) {
+		  # The nuxt develop server does not want the /_nuxt/ stripped,
+		  # and I could not configure it otherwise, so pass the entire path
+		  proxy_pass http://workflow-portal:8080;
+		}
 
 		# kill cache
 		add_header Last-Modified $date_gmt;
@@ -228,21 +256,21 @@ server {
 		etag off;
 	}
 
-    location ~* /realm([\w-]*)/space([\w-]*)/w
-    {
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header Host $http_host;
-        proxy_redirect off;
+	location ~* /realm([\w-]*)/space([\w-]*)/w
+	{
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header Host $http_host;
+		proxy_redirect off;
 
-        proxy_pass http://workflow-portal:8080;
+		proxy_pass http://workflow-portal:8080;
 
-        # kill cache
-        add_header Last-Modified $date_gmt;
-        add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
-        if_modified_since off;
-        expires off;
-        etag off;
-    }
+		# kill cache
+		add_header Last-Modified $date_gmt;
+		add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
+		if_modified_since off;
+		expires off;
+		etag off;
+	}
 
 	location /services/pdf {
 		proxy_pass http://pdfgen:8080;
@@ -290,22 +318,26 @@ server {
 		proxy_pass http://finmars-start-page:8080;
 	}
 
-	location ~* /w/_nuxt/(.*)$
-    	{
-    		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    		proxy_set_header Host $http_host;
-    		proxy_redirect off;
+	location ~* /w/_nuxt/(.*)$ {
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header Host $http_host;
+		proxy_redirect off;
 
-    		# Use the captured group $1 for the dynamic part of the domain
-    		# Use the captured group $2 for the latter part of the path
-    		proxy_pass http://workflow-portal:8080/_nuxt/$1;
+		# Use the captured group $1 for the dynamic part of the domain
+		# Use the captured group $2 for the latter part of the path
+		proxy_pass http://workflow-portal:8080/_nuxt/$1;
+		if ($develop) {
+			# The nuxt develop server does not want the /_nuxt/ stripped,
+			# and I could not configure it otherwise, so pass the entire path
+			proxy_pass http://workflow-portal:8080;
+		}
 
-    		# kill cache
-    		add_header Last-Modified $date_gmt;
-    		add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
-    		if_modified_since off;
-    		expires off;
-    		etag off;
+		# kill cache
+		add_header Last-Modified $date_gmt;
+		add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
+		if_modified_since off;
+		expires off;
+		etag off;
 	}
 
 }
