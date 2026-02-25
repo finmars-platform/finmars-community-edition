@@ -31,8 +31,8 @@ if [ -n "$VOLUME_NAME" ]; then
     echo "Volume ${VOLUME_NAME} not found"
   fi
 else
-  if $COMPOSE -f "$COMPOSE_FILE" config --volumes | grep -q .; then
-    $COMPOSE -f "$COMPOSE_FILE" down -v
+  if $COMPOSE config --volumes | grep -q .; then
+    $COMPOSE down -v
     echo "Removed volumes for current project"
   else
     echo "No volumes to remove for current project"
