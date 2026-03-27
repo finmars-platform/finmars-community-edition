@@ -26,7 +26,7 @@ docker compose up -d db
 sleep 5
 
 echo "⏳ Waiting for PostgreSQL to be ready..."
-until docker exec $(docker compose ps -q db) pg_isready -U ${DB_USER} > /dev/null 2>&1; do
+until docker compose exec db pg_isready -U ${DB_USER} > /dev/null 2>&1; do
   sleep 1
 done
 
@@ -38,14 +38,21 @@ echo "📤 Exporting SQL databases..."
 # Export backend database
 backend_dump_filepath="${DUMP_DIR}/backend.sql"
 echo "📤 Exporting database 'backend_realm00000' to 'backend.sql'..."
-docker exec $(docker compose ps -q db) pg_dump -U ${DB_USER} -d backend_realm00000 > "$backend_dump_filepath"
+docker compose exec db pg_dump -U ${DB_USER} -d backend_realm00000 > "$backend_dump_filepath"
 echo "✅ Exported 'backend_realm00000' to 'backend.sql'."
 
 # Export workflow database
 workflow_dump_filepath="${DUMP_DIR}/workflow.sql"
 echo "📤 Exporting database 'workflow_realm00000' to 'workflow.sql'..."
-docker exec $(docker compose ps -q db) pg_dump -U ${DB_USER} -d workflow_realm00000 > "$workflow_dump_filepath"
+docker compose exec db pg_dump -U ${DB_USER} -d workflow_realm00000 > "$workflow_dump_filepath"
 echo "✅ Exported 'workflow_realm00000' to 'workflow.sql'."
+
+# Export storage
+storage_dump_filepath="${DUMP_DIR}/storage.tar.gz"
+echo "📤 Exporting file storage to 'storage.tar.gz'..."
+docker compose exec core tar -C /var/app/finmars_data -cz /var/app/finmars_data > "$storage_dump_filepath"
+echo "✅ Exported file storage to 'storage.tar.gz'."
+
 
 # Function to get current version for an app
 get_current_version() {
@@ -104,7 +111,7 @@ cat > "$manifest_filepath" << EOF
     "versions": ${versions_json},
     "date": "${backup_date}",
     "owner": {
-        "username": "community_edition"
+        "username": "${ADMIN_USERNAME}"
     }
 }
 EOF

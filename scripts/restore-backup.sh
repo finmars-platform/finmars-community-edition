@@ -9,6 +9,7 @@ set -e
 BACKUP_FILE="${1:-tmp/backup.zip}"
 EXTRACT_DIR="tmp/backup_extracted"
 MANIFEST_FILE="${EXTRACT_DIR}/manifest.json"
+STORAGE_FILE='storage.tar.gz'
 
 # Function to find the latest backup directory
 find_latest_backup() {
@@ -126,6 +127,7 @@ echo "🔍 Checking version compatibility..."
 
 # Extract versions from manifest
 backup_versions=$(jq -r '.versions[] | "\(.app)=\(.version)"' "$MANIFEST_FILE")
+owner_username=$(jq -r '.owner.username' "$MANIFEST_FILE")
 
 version_mismatch=false
 
@@ -198,7 +200,7 @@ docker compose up -d db
 sleep 5
 
 echo "⏳ Waiting for PostgreSQL to be ready..."
-until docker exec $(docker compose ps -q db) pg_isready -U ${DB_USER} > /dev/null 2>&1; do
+until docker compose exec db pg_isready -U ${DB_USER} > /dev/null 2>&1; do
   sleep 1
 done
 
@@ -212,7 +214,7 @@ drop_existing_databases() {
         DB_NAME="${SERVICE_NAME}_realm00000"
         
         echo "🗑️ Dropping database '$DB_NAME'..."
-        if docker exec $(docker compose ps -q db) psql -U ${DB_USER} -c "DROP DATABASE IF EXISTS ${DB_NAME};" > /dev/null 2>&1; then
+        if docker compose exec db psql -U ${DB_USER} -c "DROP DATABASE IF EXISTS ${DB_NAME};" > /dev/null 2>&1; then
             echo "✅ Dropped database '$DB_NAME'"
         else
             echo "⚠️ Database '$DB_NAME' may not have existed or couldn't be dropped"
@@ -238,14 +240,14 @@ for SERVICE_NAME in backend workflow; do
   
   # Create database before importing
   echo "📦 Creating database '$DB_NAME'..."
-  if ! docker exec $(docker compose ps -q db) psql -U ${DB_USER} -c "CREATE DATABASE ${DB_NAME};" > /dev/null 2>&1; then
+  if ! docker compose exec db psql -U ${DB_USER} -c "CREATE DATABASE ${DB_NAME};" > /dev/null 2>&1; then
     echo "⚠️ Database '$DB_NAME' may already exist or creation failed"
   else
     echo "✅ Created database '$DB_NAME'"
   fi
   
   echo "📥 Importing database '$DB_NAME' from '$SQL_FILE'..."
-  if ! docker exec -i $(docker compose ps -q db) psql -U ${DB_USER} -d ${DB_NAME} < "${EXTRACT_DIR}/${SQL_FILE}"; then
+  if ! docker compose exec -i db psql -U ${DB_USER} -d ${DB_NAME} < "${EXTRACT_DIR}/${SQL_FILE}"; then
     echo "✗ Failed to import ${SERVICE_NAME} database!"
     exit 1
   fi
@@ -253,6 +255,27 @@ for SERVICE_NAME in backend workflow; do
 done
 
 echo "✅ SQL import completed successfully!"
+
+new_username=$ADMIN_USERNAME
+echo "🫅 Updating owner from '$owner_username' to '$new_username'"
+if ! echo "UPDATE space00000.users_member SET username = :'new_username' WHERE username = :'old_username';" \
+  | docker compose exec -i db psql -U "${DB_USER}" -d "backend_realm00000" \
+    -v "old_username=$owner_username" -v "new_username=$new_username"; then
+    echo "✗ Failed to update owner!"
+    exit 1
+fi
+echo "🫅 Updated owner"
+
+echo "🚀 Starting core container..."
+docker compose up core -d
+echo "✅ Core container is ready"
+
+echo "💾 Importing storage from $STORAGE_FILE"
+if ! cat "$EXTRACT_DIR/$STORAGE_FILE" | docker compose exec -i core tar -C /var/app/finmars_data -xzf -; then
+  echo "Failed to import storage"
+  exit 1
+fi
+echo "✅ Storage import done"
 
 echo "🗑️ Cleaning up temporary files..."
 rm -rf "$EXTRACT_DIR"
