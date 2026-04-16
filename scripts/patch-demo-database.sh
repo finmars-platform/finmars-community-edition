@@ -32,7 +32,6 @@ FROM (SELECT id,
 WHERE ull.id = updated.id;
 "
 
-print_step "Updating demo database"
 
 print_step_info "Setting report date picker to demo data range"
-print_step_info "$(run_sql "backend_realm00000" "$sql_change_listview_dates")"
+run_sql "backend_realm00000" "$sql_change_listview_dates"

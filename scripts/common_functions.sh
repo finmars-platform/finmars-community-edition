@@ -19,11 +19,17 @@ print_newline() {
 }
 
 print_step() {
- echo "$csi_bold$csi_fg_blue :: $csi_fg_default$1$csi_reset" >&2
+  echo "$csi_bold$csi_fg_blue :: $csi_fg_default$1$csi_reset" >&2
+  if [ -n "$installer_mode" ]; then
+    echo "INSTALLER:CURSTEP:$1"
+  fi
 }
 
 print_step_info() {
   echo "    $1" >&2
+  if [ -n "$installer_mode" ]; then
+    echo "INSTALLER:STEPINF:$1"
+  fi
 }
 
 print_step_warning() {
