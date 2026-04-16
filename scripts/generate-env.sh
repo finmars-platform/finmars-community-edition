@@ -1,8 +1,72 @@
 #!/bin/bash
 
+show_help() {
+  cat - <<EOF
+$0 [OPTIONS…] [ENVIRONMENT_TYPE]
+
+OPTIONS:
+  -k|--keep-env  Never overwrite the .env file
+  -u|--username  The admin username
+  -p|--password  The admin password
+  -h|--help      Show this help
+
+ARGUMENTS:
+  ENVIRONMENT_TYPE=l|h  The environment type to setup, (l)ocal or (p)roduction
+
+EOF
+}
+
+overwrite_env=
+ADMIN_USERNAME=
+ADMIN_PASSWORD=
+
+# Handle CLI options
+while :; do
+  case "$1" in
+    -h|--help)
+      show_help
+      exit
+      ;;
+    -k|--keep-env)
+      overwrite_env=n
+      ;;
+    -u|--username)
+      if [ -n "$2" ]; then
+        ADMIN_USERNAME="$2"
+        shift
+      else
+        echo "Error: must specify username after --username" >&2
+        exit 255
+      fi
+      ;;
+    -p|--password)
+      if [ -n "$2" ]; then
+        ADMIN_PASSWORD="$2"
+        shift
+      else
+        echo "Error: must specify password after --password" >&2
+        exit 255
+      fi
+      ;;
+    --)
+      break
+      ;;
+    *)
+      break
+      ;;
+    esac
+    shift
+done
+
+# Handle arguments
+environment_type="$1"
+shift
+
 if [ -f .env ]; then
-  read -p ".env already exists. Overwrite? (y/N): " confirm
-  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+  if [ -z "$overwrite_env" ]; then
+    read -p ".env already exists. Overwrite? (y/N): " overwrite_env
+  fi
+  if [[ ! "$overwrite_env" =~ ^[Yy]$ ]]; then
     echo "Aborted. Keeping existing .env file."
     if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
       return 0
@@ -15,8 +79,11 @@ fi
 PROTO="https"
 COMPOSE_FILE="docker-compose.yml"
 
-read -p "Which version will you use? Local or production (l/P): " confirm
-if [[ ! "$confirm" =~ ^[Ll]$ ]]; then
+if [ -z "$environment_type" ]; then
+  read -p "Which version will you use? Local or production (l/P): " environment_type
+fi
+
+if [[ ! "$environment_type" =~ ^[Ll]$ ]]; then
   ENVIRONMENT_TYPE=production
   AUTH_DOMAIN_PORT=443
 
@@ -37,9 +104,12 @@ else
   VERIFY_SSL=False
 fi
 
-
-read -p "Enter ADMIN_USERNAME: " ADMIN_USERNAME
-read -sp "Enter ADMIN_PASSWORD: " ADMIN_PASSWORD
+if [ -z "$ADMIN_USERNAME" ]; then
+  read -p "Enter ADMIN_USERNAME: " ADMIN_USERNAME
+fi
+if [ -z "$ADMIN_PASSWORD" ]; then
+  read -sp "Enter ADMIN_PASSWORD: " ADMIN_PASSWORD
+fi
 echo
 
 ESCAPED_ADMIN_USERNAME=$(printf '%s\n' "$ADMIN_USERNAME" | sed -e 's/[\/&]/\\&/g')
