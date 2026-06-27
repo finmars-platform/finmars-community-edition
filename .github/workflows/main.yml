@@ -3,7 +3,8 @@ name: CI Linters
 on:
   push:
     branches:
-      - '*'
+      - '**'
+  pull_request:
 
 permissions:
   contents: write 
