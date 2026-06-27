@@ -90,6 +90,38 @@ else
 fi
 set +o allexport
 
+# Determine the realm/space codes the backup was taken under (from the manifest)
+# and the codes this installation uses (from .env). When they differ - e.g. when
+# restoring a space exported from another Finmars instance into this one - the
+# codes are embedded throughout the dump (schema name, user_code, configuration
+# codes, ...), so they must be rewritten before import or the data will not be
+# addressable under this installation's realm/space.
+SRC_SPACE_CODE=$(jq -r '.space_code // empty' "$MANIFEST_FILE")
+SRC_REALM_CODE=$(jq -r '.realm_code // empty' "$MANIFEST_FILE")
+DST_SPACE_CODE="${BASE_API_URL}"
+DST_REALM_CODE="${REALM_CODE}"
+
+# Rewrite source realm/space codes to this installation's codes inside a SQL dump.
+# No-op when the codes already match (normal same-instance restore).
+# Uses a temp file + mv instead of `sed -i` for portability (GNU vs BSD sed).
+rewrite_codes_in_sql() {
+    local sql_file="$1"
+    local sed_expr=""
+
+    if [ -n "$SRC_SPACE_CODE" ] && [ "$SRC_SPACE_CODE" != "$DST_SPACE_CODE" ]; then
+        echo "🔧 Rewriting space code '${SRC_SPACE_CODE}' -> '${DST_SPACE_CODE}' in $(basename "$sql_file")"
+        sed_expr="${sed_expr}s/${SRC_SPACE_CODE}/${DST_SPACE_CODE}/g;"
+    fi
+    if [ -n "$SRC_REALM_CODE" ] && [ "$SRC_REALM_CODE" != "$DST_REALM_CODE" ]; then
+        echo "🔧 Rewriting realm code '${SRC_REALM_CODE}' -> '${DST_REALM_CODE}' in $(basename "$sql_file")"
+        sed_expr="${sed_expr}s/${SRC_REALM_CODE}/${DST_REALM_CODE}/g;"
+    fi
+
+    if [ -n "$sed_expr" ]; then
+        sed "$sed_expr" "$sql_file" > "${sql_file}.tmp" && mv "${sql_file}.tmp" "$sql_file"
+    fi
+}
+
 # Function to get current version for an app
 get_current_version() {
     local app_name="$1"
@@ -235,7 +267,10 @@ for SERVICE_NAME in backend workflow; do
     echo "✗ Error: ${SQL_FILE} not found in backup!"
     exit 1
   fi
-  
+
+  # Rewrite realm/space codes when the backup was taken under different codes
+  rewrite_codes_in_sql "${EXTRACT_DIR}/${SQL_FILE}"
+
   # Create database before importing
   echo "📦 Creating database '$DB_NAME'..."
   if ! docker exec $(docker compose ps -q db) psql -U ${DB_USER} -c "CREATE DATABASE ${DB_NAME};" > /dev/null 2>&1; then
@@ -253,6 +288,30 @@ for SERVICE_NAME in backend workflow; do
 done
 
 echo "✅ SQL import completed successfully!"
+
+# Apply migrations so a backup created on an older version is upgraded to the
+# version this installation runs. This mirrors what happens on a normal
+# `make up` (the *-migration services run automatically), but is done here so a
+# standalone restore leaves the data ready to use. migrate_all_schemes is
+# idempotent, so a same-version restore is a no-op ("No migrations to apply").
+echo "🚀 Applying migrations to restored databases..."
+for MIGRATION_SERVICE in core-migration workflow-migration; do
+  echo "🚀 Running ${MIGRATION_SERVICE}..."
+  if ! docker compose run --rm -T "${MIGRATION_SERVICE}"; then
+    echo "✗ Migration '${MIGRATION_SERVICE}' failed!"
+    exit 1
+  fi
+done
+echo "✅ Migrations applied."
+
+# If the application stack is running, restart the services that hold the data
+# so they pick up the freshly restored/migrated schema. If it is not running
+# (e.g. restore during initial setup), this is skipped and the services will
+# start with the correct data on the next `make up`.
+if [ -n "$(docker compose ps -q core)" ]; then
+  echo "🔄 Restarting application services..."
+  docker compose restart core core-worker workflow workflow-worker workflow-scheduler
+fi
 
 echo "🗑️ Cleaning up temporary files..."
 rm -rf "$EXTRACT_DIR"
